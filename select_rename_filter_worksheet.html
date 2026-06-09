@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SI Analytics | Interactive dplyr Cheat Sheet</title>
+<style>
+:root{
+  --navy:#0F172A;--teal:#0F766E;--gold:#FACC15;--off:#F8FAFC;--soft-teal:#ECFDF5;
+  --soft-gold:#FEF9C3;--slate:#64748B;--rose:#BE123C;--green:#15803D;--line:#CBD5E1;
+  --ink:#1E293B;--zoom:1
+}
+*{box-sizing:border-box}
+html{background:#E2E8F0;scroll-behavior:smooth}
+body{margin:0;background:#E2E8F0;color:var(--ink);font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.34}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.toolbar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 18px;background:var(--navy);color:#fff;box-shadow:0 8px 20px rgba(15,23,42,.22)}
+.toolbar .instruction{flex:1 1 420px;font-size:13px;color:#E2E8F0}
+.toolbar .actions{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.toolbar button{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:800}
+.toolbar button:hover,.toolbar button:focus-visible{background:rgba(255,255,255,.18)}
+.toolbar .primary{background:var(--teal);border-color:#5EEAD4}
+.zoom-readout,.progress-readout{font-size:12px;color:#F8FAFC;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.06);white-space:nowrap}
+.progress-shell{width:110px;height:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden}
+.progress-bar{height:100%;width:0;background:var(--gold);transition:width .2s ease}
+.sheet-stage{overflow:auto;padding:22px 0 48px}
+.sheet-wrap{transform:scale(var(--zoom));transform-origin:top center;width:calc(100% / var(--zoom))}
+.page{position:relative;width:min(210mm,calc(100vw - 24px));min-height:297mm;margin:0 auto 20px;padding:12mm 12mm 16mm;background:#fff;box-shadow:0 12px 28px rgba(15,23,42,.16);overflow:hidden}
+.page::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:linear-gradient(90deg,var(--navy) 0 58%,var(--teal) 58% 88%,var(--gold) 88%)}
+.page-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:8px}
+.brand{display:flex;align-items:center;gap:9px;min-width:142px}
+.brand img{width:112px;max-height:42px;object-fit:contain}
+.brand-fallback{display:none;font-size:13px;letter-spacing:.14em;color:var(--navy);font-weight:900}
+.page-kicker{font-size:9px;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:var(--teal);margin-bottom:3px}
+h1{margin:0 0 4px;color:var(--navy);font-size:20px;line-height:1.1;letter-spacing:-.03em}
+.subtitle{margin:0;color:var(--slate);font-size:11px}
+.page-number{font-size:9px;color:var(--slate);white-space:nowrap;margin-top:3px}
+.intro-strip{display:grid;grid-template-columns:1.45fr 1fr;gap:8px;padding:8px 9px;border:1px solid #99F6E4;background:linear-gradient(90deg,var(--soft-teal),#fff);border-radius:10px;margin:7px 0 9px;font-size:9.2px}
+.intro-strip strong{color:var(--navy)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.stack{display:grid;gap:7px}
+.card{break-inside:avoid;border:1px solid #D8E0E8;border-radius:10px;padding:8px;background:#fff}
+.card.soft{background:#F8FAFC}.card.teal{background:var(--soft-teal);border-color:#A7F3D0}.card.gold{background:#FFFBEB;border-color:#FDE68A}
+.card-title{display:flex;gap:7px;align-items:center;margin:0 0 5px;color:var(--navy);font-size:10.2px;text-transform:uppercase;letter-spacing:.07em;font-weight:900}
+.badge{display:inline-grid;place-items:center;width:18px;height:18px;flex:0 0 18px;border-radius:50%;background:var(--teal);color:#fff;font-size:9px;letter-spacing:0}
+p{font-size:9.4px;margin:4px 0}.mini{font-size:8.5px;color:var(--slate);margin:3px 0}
+pre{white-space:pre-wrap;margin:5px 0;padding:6px 7px;border-radius:7px;background:#0B1220;color:#E2E8F0;font:8.25px/1.4 "SFMono-Regular",Consolas,monospace;border-left:3px solid var(--teal)}
+code{font-family:"SFMono-Regular",Consolas,monospace;color:#0F766E;font-size:.96em}
+.question{margin-top:5px;padding-top:5px;border-top:1px dashed #CBD5E1}
+.question:first-of-type{border-top:0;padding-top:0}
+.prompt{display:block;margin-bottom:4px;color:#334155;font-size:9.2px;font-weight:700}
+input.response,textarea.response,select.response{width:100%;border:1px solid #AAB8C7;border-radius:6px;padding:5px 6px;background:#fff;color:var(--navy);font-size:9px;outline:none}
+textarea.response{resize:vertical;min-height:39px;font-family:"SFMono-Regular",Consolas,monospace;line-height:1.3}
+input.response:focus,textarea.response:focus,select.response:focus,button:focus-visible{outline:3px solid rgba(250,204,21,.55);outline-offset:1px}
+.response.correct{border-color:var(--green);background:#F0FDF4}.response.incorrect{border-color:var(--rose);background:#FFF1F2}
+.hint{display:block;margin-top:3px;color:var(--slate);font-size:8.2px}.hint.hidden{display:none}
+.feedback{display:none;margin-top:4px;font-size:8.4px;line-height:1.25}.feedback.show{display:block}.feedback.good{color:var(--green)}.feedback.bad{color:var(--rose)}
+.choice-group{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+.choice-group button{border:1px solid #CBD5E1;color:#334155;background:#fff;border-radius:999px;padding:4px 7px;font-size:8.6px;font-weight:800}
+.choice-group button:hover{border-color:var(--teal)}.choice-group button.selected{border-color:var(--navy);background:#E2E8F0}.choice-group button.correct-choice{border-color:var(--green);background:#DCFCE7;color:#166534}.choice-group button.wrong-choice{border-color:var(--rose);background:#FFE4E6;color:#9F1239}
+table{width:100%;border-collapse:collapse;font-size:8.5px}th,td{border:1px solid #D8E0E8;padding:4px 5px;text-align:left;vertical-align:top}th{background:#F1F5F9;color:var(--navy)}
+.callout{margin-top:5px;padding:5px 7px;border-left:3px solid var(--gold);background:var(--soft-gold);font-size:8.4px}
+.footer{position:absolute;left:12mm;right:12mm;bottom:5mm;padding-top:4px;border-top:1px solid #CBD5E1;color:var(--slate);font-size:8px;text-align:center;letter-spacing:.03em}
+@media(max-width:760px){.page{width:calc(100vw - 12px);padding:10mm 8mm 15mm}.grid-2,.grid-3,.intro-strip{grid-template-columns:1fr}.footer{left:8mm;right:8mm}h1{font-size:18px}}
+@page{size:A4 portrait;margin:0}
+@media print{
+  html,body{background:#fff}.toolbar{display:none!important}.sheet-stage{padding:0;overflow:visible}.sheet-wrap{transform:none!important;width:100%!important}
+  .page{width:210mm;height:297mm;min-height:297mm;margin:0;padding:9mm 10mm 14mm;box-shadow:none;page-break-after:always;break-after:page}
+  .page:last-child{page-break-after:auto;break-after:auto}.footer{left:10mm;right:10mm;bottom:4mm}
+  .page-header{margin-bottom:5px}.intro-strip{margin:5px 0 6px;padding:5px 7px}.grid-2,.stack{gap:5px}
+  .card{padding:5px 6px;border-radius:7px}.card-title{font-size:8.7px;margin-bottom:3px}.badge{width:15px;height:15px;flex-basis:15px;font-size:7px}
+  h1{font-size:17px}p,.prompt{font-size:7.8px}.mini,.hint,.feedback,.choice-group button,.callout,table{font-size:7px}
+  pre{font-size:6.9px;padding:4px 5px;margin:3px 0}input.response,textarea.response,select.response{font-size:7.4px;padding:3px 4px}textarea.response{min-height:28px}.question{margin-top:3px;padding-top:3px}
+}
+</style>
+</head>
+<body>
+<aside class="toolbar" aria-label="Cheat sheet controls">
+  <div class="instruction">Complete the activities, check your understanding, and save your completed sheet as a PDF.</div>
+  <div class="actions">
+    <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+    <span class="zoom-readout" id="zoomReadout">100%</span>
+    <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+    <button type="button" id="toggleHints">Hide hints</button>
+    <button type="button" id="clearAnswers">Clear answers</button>
+    <button type="button" class="primary" id="printSheet">Print or Save PDF</button>
+    <span class="progress-readout" id="progressReadout">0 of 36 completed</span>
+    <span class="progress-shell"><span class="progress-bar" id="progressBar"></span></span>
+  </div>
+</aside>
+
+<main class="sheet-stage"><div class="sheet-wrap">
+
+<!-- PAGE 1 -->
+<section class="page" aria-labelledby="p1">
+<header class="page-header">
+  <div><div class="page-kicker">SI Analytics • Guided revision sheet</div><h1 id="p1">dplyr Cheat Sheet: Selecting Columns</h1><p class="subtitle">Keeping, dropping, reordering, and combining variables with precision</p></div>
+  <div><div class="brand"><img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">SI ANALYTICS</span></div><div class="page-number">PAGE 01 / 03</div></div>
+</header>
+<div class="intro-strip"><div><strong>Purpose.</strong> Use <code>dplyr::select()</code> to keep, drop, and reorder columns in a data frame. Practise with a compact subset of the Yaoundé survey data.</div><div><strong>Core idea.</strong> Selecting variables is often the first step in a clean, reproducible data workflow.</div></div>
+
+<div class="grid-2">
+<div class="stack">
+<article class="card teal">
+<h2 class="card-title"><span class="badge">A</span> Select by name or position</h2>
+<pre>yao &lt;- yaounde %&gt;% 
+  select(age, sex, highest_education,
+         occupation, is_smoker, is_pregnant,
+         igg_result, igm_result)</pre>
+<div class="question"><label class="prompt" for="q1">1. Which dplyr function keeps or drops columns?</label><input class="response" id="q1" data-item="q1" data-answer="select()" data-alt="select||dplyr::select()" data-hint-options="select()|filter()|rename()|mutate()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q2">2. Select the <code>age</code> column by name.</label><input class="response" id="q2" data-item="q2" data-mode="code" data-answer="yao %&gt;% select(age)" data-alt="select(yao, age)" data-hint-options="yao %&gt;% select(age)|yao %&gt;% filter(age)|rename(age)|select(yao == age)"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q3">3. Select the third column from <code>yaounde</code>.</label><input class="response" id="q3" data-item="q3" data-mode="code" data-answer="yaounde %&gt;% select(3)" data-alt="select(yaounde, 3)" data-hint-options="yaounde %&gt;% select(3)|yaounde %&gt;% filter(3)|yaounde[3]|select(age == 3)"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q4">4. Select <code>age</code>, <code>sex</code>, and <code>igg_result</code>.</label><input class="response" id="q4" data-item="q4" data-mode="code" data-answer="yaounde %&gt;% select(age, sex, igg_result)" data-alt="select(yaounde, age, sex, igg_result)" data-hint-options="Separate names with commas|Use &amp; between names|Use filter()|Use everything() only"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card gold">
+<h2 class="card-title"><span class="badge">B</span> Select ranges</h2>
+<pre>yao %&gt;% select(age:occupation)
+yao %&gt;% select(1:4)</pre>
+<div class="question"><span class="prompt">5. “The colon operator selects a consecutive range of columns.”</span><div class="choice-group" data-item="q5" data-answer="correct" data-explain="Inside select(), the colon operator keeps every column between the first and last named column, inclusive."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q6">6. Select all columns from <code>symptoms</code> to <code>sequelae</code>, inclusive.</label><input class="response" id="q6" data-item="q6" data-mode="code" data-answer="yaounde %&gt;% select(symptoms:sequelae)" data-alt="select(yaounde, symptoms:sequelae)" data-hint-options="Use symptoms:sequelae|Use symptoms &amp; sequelae|Use starts_with()|Use filter()"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card">
+<h2 class="card-title"><span class="badge">C</span> Drop columns with <code>!</code></h2>
+<pre>yao %&gt;% select(!age)
+yao %&gt;% select(!age:occupation)
+yao %&gt;% select(!c(age, sex, igg_result))</pre>
+<div class="question"><label class="prompt" for="q7">7. Drop only <code>age</code> from <code>yao</code>.</label><input class="response" id="q7" data-item="q7" data-mode="code" data-answer="yao %&gt;% select(!age)" data-alt="select(yao, !age)" data-hint-options="Use !age|Use age != TRUE|Use filter(!age)|Use -age only"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q8">8. Drop <code>age</code>, <code>sex</code>, and <code>igg_result</code>.</label><input class="response" id="q8" data-item="q8" data-mode="code" data-answer="yao %&gt;% select(!c(age, sex, igg_result))" data-alt="select(yao, !c(age, sex, igg_result))" data-hint-options="Wrap the names in !c(...)|Use filter()|Use everything() first|Use =="><span class="hint"></span><span class="feedback"></span></div>
+</article>
+</div>
+
+<div class="stack">
+<article class="card">
+<h2 class="card-title"><span class="badge">D</span> Pattern helpers</h2>
+<pre>yao %&gt;% select(starts_with("is_"))
+yao %&gt;% select(ends_with("_result"))
+yaounde %&gt;% select(contains("drug"))</pre>
+<div class="question"><label class="prompt" for="q9">9. Select columns that start with <code>is_</code>.</label><input class="response" id="q9" data-item="q9" data-mode="code" data-answer='yaounde %&gt;% select(starts_with("is_"))' data-alt="select(yaounde, starts_with('is_'))||yaounde %&gt;% select(starts_with('is_'))" data-hint-options="starts_with()|ends_with()|contains()|everything()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q10">10. Select columns ending with <code>_result</code>.</label><input class="response" id="q10" data-item="q10" data-mode="code" data-answer='yao %&gt;% select(ends_with("_result"))' data-alt="select(yao, ends_with('_result'))||yao %&gt;% select(ends_with('_result'))" data-hint-options="ends_with()|starts_with()|contains()|rename()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q11">11. Select columns whose names contain <code>drug</code>.</label><input class="response" id="q11" data-item="q11" data-mode="code" data-answer='yaounde %&gt;% select(contains("drug"))' data-alt="select(yaounde, contains('drug'))||yaounde %&gt;% select(contains('drug'))" data-hint-options="contains()|starts_with()|ends_with()|filter()"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card teal">
+<h2 class="card-title"><span class="badge">E</span> Reorder with <code>everything()</code></h2>
+<pre>yaounde %&gt;% 
+  select(is_pregnant, everything())
+
+yaounde %&gt;% 
+  select(ends_with("result"), everything())</pre>
+<div class="question"><span class="prompt">12. “<code>everything()</code> matches columns that have not yet been selected.”</span><div class="choice-group" data-item="q12" data-answer="correct" data-explain="everything() is useful for reordering because it appends all remaining columns after the columns you name first."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q13">13. Move columns starting with <code>is_</code> to the front.</label><input class="response" id="q13" data-item="q13" data-mode="code" data-answer='yaounde %&gt;% select(starts_with("is_"), everything())' data-alt="yaounde %&gt;% select(starts_with('is_'), everything())||select(yaounde, starts_with('is_'), everything())" data-hint-options="Name the helper first, then everything()|Use filter()|Use rename()|Drop all other columns"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card soft">
+<h2 class="card-title"><span class="badge">F</span> Rapid reference</h2>
+<table>
+<tr><th>Task</th><th>Pattern</th></tr>
+<tr><td>Keep columns</td><td><code>select(age, sex)</code></td></tr>
+<tr><td>Keep a range</td><td><code>select(age:occupation)</code></td></tr>
+<tr><td>Drop columns</td><td><code>select(!c(age, sex))</code></td></tr>
+<tr><td>Select by name pattern</td><td><code>starts_with()</code>, <code>ends_with()</code>, <code>contains()</code></td></tr>
+<tr><td>Reorder columns</td><td><code>select(key_col, everything())</code></td></tr>
+</table>
+</article>
+</div>
+</div>
+<footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+</section>
+
+<!-- PAGE 2 -->
+<section class="page" aria-labelledby="p2">
+<header class="page-header">
+  <div><div class="page-kicker">SI Analytics • Guided revision sheet</div><h1 id="p2">dplyr Cheat Sheet: Renaming Columns</h1><p class="subtitle">Creating clearer, analysis-ready variable names</p></div>
+  <div><div class="brand"><img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">SI ANALYTICS</span></div><div class="page-number">PAGE 02 / 03</div></div>
+</header>
+<div class="intro-strip"><div><strong>Purpose.</strong> Use <code>rename()</code> when you want to change names while retaining all columns. Use <code>select()</code> when you want to rename while keeping only selected columns.</div><div><strong>Watch out.</strong> The syntax is <code>new_name = old_name</code>.</div></div>
+
+<div class="grid-2">
+<div class="stack">
+<article class="card teal">
+<h2 class="card-title"><span class="badge">A</span> Rename directly</h2>
+<pre>yaounde %&gt;% 
+  rename(patient_age = age,
+         patient_sex = sex)</pre>
+<div class="question"><label class="prompt" for="q14">14. Which function changes column names while keeping the remaining columns?</label><input class="response" id="q14" data-item="q14" data-answer="rename()" data-alt="rename||dplyr::rename()" data-hint-options="rename()|select()|filter()|contains()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">15. “Inside <code>rename()</code>, the new name comes before the old name.”</span><div class="choice-group" data-item="q15" data-answer="correct" data-explain="The correct order is new_name = old_name."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q16">16. Rename <code>weight_kg</code> to <code>patient_weight_kg</code>.</label><input class="response" id="q16" data-item="q16" data-mode="code" data-answer="yaounde %&gt;% rename(patient_weight_kg = weight_kg)" data-alt="rename(yaounde, patient_weight_kg = weight_kg)" data-hint-options="Use new_name = old_name|Use old_name = new_name|Use select(!weight_kg)|Use filter()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q17">17. Rename <code>igg_result</code> to <code>igg_antibody_result</code>.</label><input class="response" id="q17" data-item="q17" data-mode="code" data-answer="yaounde %&gt;% rename(igg_antibody_result = igg_result)" data-alt="rename(yaounde, igg_antibody_result = igg_result)" data-hint-options="Use new_name = old_name|Use starts_with()|Use filter()|Use =="><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card gold">
+<h2 class="card-title"><span class="badge">B</span> Rename while selecting</h2>
+<pre>yaounde %&gt;% 
+  select(patient_age = age,
+         patient_sex = sex)</pre>
+<div class="question"><span class="prompt">18. “<code>select()</code> can rename columns while selecting them.”</span><div class="choice-group" data-item="q18" data-answer="correct" data-explain="Within select(), new_name = old_name selects and renames in one step."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q19">19. Select <code>age</code> and <code>sex</code>, renaming them to <code>patient_age</code> and <code>patient_sex</code>.</label><textarea class="response" id="q19" data-item="q19" data-mode="code" data-answer="yaounde %&gt;% select(patient_age = age, patient_sex = sex)" data-alt="select(yaounde, patient_age = age, patient_sex = sex)" data-hint-options="Use select(new_name = old_name, ...)|Use rename() only|Use filter()|Use everything() only"></textarea><span class="hint"></span><span class="feedback"></span></div>
+</article>
+</div>
+
+<div class="stack">
+<article class="card">
+<h2 class="card-title"><span class="badge">C</span> Choose the right verb</h2>
+<div class="question"><span class="prompt">20. You want to keep every column but change <code>sex</code> to <code>patient_sex</code>.</span><div class="choice-group" data-item="q20" data-answer="rename" data-explain="rename() changes names while retaining the other variables."><button type="button" data-choice="rename">Use rename()</button><button type="button" data-choice="select">Use select() only</button><button type="button" data-choice="filter">Use filter()</button></div><span class="feedback"></span></div>
+<div class="question"><span class="prompt">21. You want a two-column table containing renamed versions of <code>age</code> and <code>sex</code>.</span><div class="choice-group" data-item="q21" data-answer="select" data-explain="select() is efficient when you want to keep only a subset of columns and rename them at the same time."><button type="button" data-choice="select">Use select()</button><button type="button" data-choice="rename">Use rename() only</button><button type="button" data-choice="filter">Use filter()</button></div><span class="feedback"></span></div>
+</article>
+
+<article class="card teal">
+<h2 class="card-title"><span class="badge">D</span> Mini integration task</h2>
+<p>Create a compact table that places test results first, followed by all other variables, then renames <code>sex</code> to <code>patient_sex</code>.</p>
+<div class="question"><label class="prompt" for="q22">22. Write a two-step pipe.</label><textarea class="response" id="q22" data-item="q22" data-mode="code" data-answer='yaounde %&gt;% select(ends_with("result"), everything()) %&gt;% rename(patient_sex = sex)' data-alt="yaounde %&gt;% select(ends_with('result'), everything()) %&gt;% rename(patient_sex = sex)"></textarea><span class="hint">Hint options: combine <code>select()</code>, <code>everything()</code>, and <code>rename()</code>.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card soft">
+<h2 class="card-title"><span class="badge">E</span> Compact comparison</h2>
+<table>
+<tr><th>Verb</th><th>Use it to…</th><th>Example</th></tr>
+<tr><td><code>select()</code></td><td>Keep, drop, reorder, or rename selected columns</td><td><code>select(patient_age = age)</code></td></tr>
+<tr><td><code>rename()</code></td><td>Change names while retaining other columns</td><td><code>rename(patient_age = age)</code></td></tr>
+</table>
+<div class="callout"><strong>Read the syntax aloud:</strong> create <code>patient_age</code> from the existing <code>age</code> column.</div>
+</article>
+</div>
+</div>
+<footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+</section>
+
+<!-- PAGE 3 -->
+<section class="page" aria-labelledby="p3">
+<header class="page-header">
+  <div><div class="page-kicker">SI Analytics • Guided revision sheet</div><h1 id="p3">dplyr Cheat Sheet: Filtering Rows</h1><p class="subtitle">Keeping observations that meet defined conditions</p></div>
+  <div><div class="brand"><img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">SI ANALYTICS</span></div><div class="page-number">PAGE 03 / 03</div></div>
+</header>
+<div class="intro-strip"><div><strong>Purpose.</strong> Use <code>filter()</code> to retain rows that satisfy clear conditions. Combine relational and logical operators to define meaningful subsets.</div><div><strong>Key distinction.</strong> <code>select()</code> changes columns. <code>filter()</code> changes rows.</div></div>
+
+<div class="grid-2">
+<div class="stack">
+<article class="card teal">
+<h2 class="card-title"><span class="badge">A</span> Filter with one condition</h2>
+<pre>yao %&gt;% filter(sex == "Male")
+yao %&gt;% filter(age &lt; 6)
+yao %&gt;% filter(age &gt;= 70)</pre>
+<div class="question"><label class="prompt" for="q23">23. Which dplyr verb keeps rows that satisfy a condition?</label><input class="response" id="q23" data-item="q23" data-answer="filter()" data-alt="filter||dplyr::filter()" data-hint-options="filter()|select()|rename()|everything()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">24. “<code>==</code> tests equality, while <code>=</code> is often used to specify function arguments.”</span><div class="choice-group" data-item="q24" data-answer="correct" data-explain="Use == to test equality in filter conditions."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q25">25. Keep respondents who were pregnant.</label><input class="response" id="q25" data-item="q25" data-mode="code" data-answer='yao %&gt;% filter(is_pregnant == "Yes")' data-alt="filter(yao, is_pregnant == 'Yes')||yao %&gt;% filter(is_pregnant == 'Yes')"><span class="hint">Hint options: use <code>filter()</code> and <code>==</code>.</span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q26">26. Keep respondents under 18.</label><input class="response" id="q26" data-item="q26" data-mode="code" data-answer="yao %&gt;% filter(age &lt; 18)" data-alt="filter(yao, age &lt; 18)"><span class="hint">Hint options: use <code>age &lt; 18</code>.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card gold">
+<h2 class="card-title"><span class="badge">B</span> Relational and membership operators</h2>
+<table>
+<tr><th>Operator</th><th>Meaning</th><th>Example</th></tr>
+<tr><td><code>&lt;</code></td><td>Less than</td><td><code>age &lt; 18</code></td></tr>
+<tr><td><code>&gt;=</code></td><td>At least</td><td><code>age &gt;= 70</code></td></tr>
+<tr><td><code>!=</code></td><td>Not equal to</td><td><code>sex != "Male"</code></td></tr>
+<tr><td><code>%in%</code></td><td>Appears in a set</td><td><code>neighborhood %in% c("Tsinga","Messa")</code></td></tr>
+</table>
+<div class="question"><label class="prompt" for="q27">27. Keep respondents living in Tsinga or Messa using <code>%in%</code>.</label><textarea class="response" id="q27" data-item="q27" data-mode="code" data-answer='yao %&gt;% filter(neighborhood %in% c("Tsinga", "Messa"))' data-alt="yao %&gt;% filter(neighborhood %in% c('Tsinga', 'Messa'))||filter(yao, neighborhood %in% c('Tsinga', 'Messa'))"></textarea><span class="hint">Hint options: put both neighbourhood names inside <code>c()</code>.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card">
+<h2 class="card-title"><span class="badge">C</span> Combine conditions</h2>
+<pre>yao %&gt;% 
+  filter(is_pregnant == "Yes" &amp; 
+         is_smoker == "Ex-smoker")
+
+yao %&gt;% 
+  filter(is_pregnant == "Yes" | 
+         is_smoker == "Ex-smoker")</pre>
+<div class="question"><label class="prompt" for="q28">28. Which operator means AND?</label><input class="response" id="q28" data-item="q28" data-answer="&amp;" data-alt="and" data-hint-options="&amp;|||!|%in%"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q29">29. Which operator means OR?</label><input class="response" id="q29" data-item="q29" data-answer="|" data-alt="or" data-hint-options="||&amp;|!|%in%"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q30">30. Keep men who tested IgG positive.</label><textarea class="response" id="q30" data-item="q30" data-mode="code" data-answer='yao %&gt;% filter(sex == "Male" &amp; igg_result == "Positive")' data-alt="yao %&gt;% filter(sex == 'Male', igg_result == 'Positive')||filter(yao, sex == 'Male' &amp; igg_result == 'Positive')"></textarea><span class="hint">Hint options: combine both tests with <code>&amp;</code>.</span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q31">31. Keep children or respondents with primary education.</label><textarea class="response" id="q31" data-item="q31" data-mode="code" data-answer='yao %&gt;% filter(age &lt; 18 | highest_education == "Primary")' data-alt="filter(yao, age &lt; 18 | highest_education == 'Primary')"></textarea><span class="hint">Hint options: use the OR operator.</span><span class="feedback"></span></div>
+</article>
+</div>
+
+<div class="stack">
+<article class="card">
+<h2 class="card-title"><span class="badge">D</span> Negate conditions</h2>
+<pre>yao %&gt;% 
+  filter(!(age &lt; 18 | weight_kg &lt; 30))
+
+yao %&gt;% 
+  filter(!(highest_education %in% 
+           c("Primary", "Secondary")))</pre>
+<div class="question"><span class="prompt">32. “Wrapping a condition in <code>!()</code> negates it.”</span><div class="choice-group" data-item="q32" data-answer="correct" data-explain="The exclamation mark negates the logical result of the condition inside the parentheses."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q33">33. Drop respondents living in Tsinga or Messa.</label><textarea class="response" id="q33" data-item="q33" data-mode="code" data-answer='yao %&gt;% filter(!(neighborhood %in% c("Tsinga", "Messa")))' data-alt="yao %&gt;% filter(!(neighborhood %in% c('Tsinga', 'Messa')))||filter(yao, !(neighborhood %in% c('Tsinga', 'Messa')))"></textarea><span class="hint">Hint options: negate the <code>%in%</code> expression.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card teal">
+<h2 class="card-title"><span class="badge">E</span> Missing values</h2>
+<pre>yao %&gt;% filter(is.na(is_smoker))
+yao %&gt;% filter(!is.na(is_pregnant))</pre>
+<div class="question"><span class="prompt">34. “Use <code>is.na()</code> rather than <code>== NA</code> to identify missing values.”</span><div class="choice-group" data-item="q34" data-answer="correct" data-explain="NA is a missing value marker. Use is.na() to test for missingness."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q35">35. Keep respondents with missing smoking status.</label><input class="response" id="q35" data-item="q35" data-mode="code" data-answer="yao %&gt;% filter(is.na(is_smoker))" data-alt="filter(yao, is.na(is_smoker))"><span class="hint">Hint options: use <code>is.na(is_smoker)</code>.</span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q36">36. Drop rows with respiration frequency under 20, but retain missing values.</label><textarea class="response" id="q36" data-item="q36" data-mode="code" data-answer="yaounde %&gt;% filter(respiration_frequency &gt;= 20 | is.na(respiration_frequency))" data-alt="filter(yaounde, respiration_frequency &gt;= 20 | is.na(respiration_frequency))"></textarea><span class="hint">Hint options: keep values <code>&gt;= 20</code> OR missing values.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card soft">
+<h2 class="card-title"><span class="badge">F</span> Final readiness check</h2>
+<table>
+<tr><th>Question</th><th>Ask yourself</th></tr>
+<tr><td>Selecting</td><td>Am I changing columns?</td></tr>
+<tr><td>Filtering</td><td>Am I changing rows?</td></tr>
+<tr><td>Combining logic</td><td>Do I mean AND (<code>&amp;</code>) or OR (<code>|</code>)?</td></tr>
+<tr><td>Negating logic</td><td>Should I wrap the condition in <code>!()</code>?</td></tr>
+<tr><td>Missing values</td><td>Do I need <code>is.na()</code> or <code>!is.na()</code>?</td></tr>
+</table>
+<div class="callout"><strong>Workshop readiness:</strong> revisit any rose-coloured response, then print or save your completed sheet as a PDF.</div>
+</article>
+</div>
+</div>
+<footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+</section>
+
+</div></main>
+
+<script>
+(() => {
+const STORAGE_KEY="siAnalyticsDplyrSelectFilterV1", SETTINGS_KEY="siAnalyticsDplyrSelectFilterSettingsV1";
+const responses=[...document.querySelectorAll(".response")], groups=[...document.querySelectorAll(".choice-group")], hints=[...document.querySelectorAll(".hint")];
+const items=[...responses.filter(x=>x.dataset.item),...groups.filter(x=>x.dataset.item)];
+let zoom=1,hintsVisible=true;
+const norm=(v,mode="")=>{let x=(v||"").trim().toLowerCase().replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/\r/g,"");return mode==="code"?x.replace(/\s+/g,"").replace(/;/g,""):x.replace(/\s+/g," ")};
+const alts=el=>[el.dataset.answer||"",...(el.dataset.alt?el.dataset.alt.split("||"):[])].map(x=>norm(x,el.dataset.mode));
+const feedback=(el,ok,msg="")=>{const f=el.parentElement.querySelector(".feedback")||el.nextElementSibling?.nextElementSibling;if(el.classList.contains("response")){el.classList.toggle("correct",ok);el.classList.toggle("incorrect",!ok)}if(f){f.className=`feedback show ${ok?"good":"bad"}`;f.textContent=msg||(ok?"Correct.":"Review this item and try again.")}};
+const validate=el=>{if(!el.value.trim()){el.classList.remove("correct","incorrect");const f=el.parentElement.querySelector(".feedback");if(f){f.className="feedback";f.textContent=""}return false}const ok=alts(el).includes(norm(el.value,el.dataset.mode));feedback(el,ok);return ok};
+const save=()=>{const state={};responses.forEach(x=>state[x.id]=x.value);groups.forEach((g,i)=>state[g.dataset.item||`g${i}`]=g.dataset.selected||"");localStorage.setItem(STORAGE_KEY,JSON.stringify(state));localStorage.setItem(SETTINGS_KEY,JSON.stringify({zoom,hintsVisible}));progress()};
+const pick=(g,c)=>{g.dataset.selected=c;const ok=c===g.dataset.answer;g.querySelectorAll("button").forEach(b=>{b.classList.remove("selected","correct-choice","wrong-choice");if(b.dataset.choice===c)b.classList.add("selected",ok?"correct-choice":"wrong-choice")});const f=g.parentElement.querySelector(".feedback")||g.nextElementSibling;if(f){f.className=`feedback show ${ok?"good":"bad"}`;f.textContent=ok?"Correct.":(g.dataset.explain||"Review this concept and try again.")}save()};
+const progress=()=>{const done=items.filter(x=>x.classList.contains("response")?!!x.value.trim():!!x.dataset.selected).length,pct=Math.round(done/items.length*100);document.getElementById("progressReadout").textContent=`${done} of ${items.length} completed • ${pct}%`;document.getElementById("progressBar").style.width=`${pct}%`};
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+responses.forEach(el=>{const h=el.parentElement.querySelector(".hint")||el.nextElementSibling;if(h&&el.dataset.hintOptions)h.textContent=`Hint options: ${shuffle(el.dataset.hintOptions.split("|")).join("  •  ")}`;el.addEventListener("blur",()=>{validate(el);save()});el.addEventListener("input",save);el.addEventListener("change",()=>{validate(el);save()})});
+groups.forEach(g=>g.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>pick(g,b.dataset.choice))));
+const applyZoom=()=>{document.documentElement.style.setProperty("--zoom",zoom);document.getElementById("zoomReadout").textContent=`${Math.round(zoom*100)}%`};
+const applyHints=()=>{hints.forEach(h=>h.classList.toggle("hidden",!hintsVisible));document.getElementById("toggleHints").textContent=hintsVisible?"Hide hints":"Show hints"};
+document.getElementById("zoomOut").onclick=()=>{zoom=Math.max(.7,+(zoom-.1).toFixed(1));applyZoom();save()};
+document.getElementById("zoomIn").onclick=()=>{zoom=Math.min(1.3,+(zoom+.1).toFixed(1));applyZoom();save()};
+document.getElementById("toggleHints").onclick=()=>{hintsVisible=!hintsVisible;applyHints();save()};
+document.getElementById("printSheet").onclick=()=>window.print();
+document.getElementById("clearAnswers").onclick=()=>{if(!confirm("Clear all saved responses from this browser?"))return;localStorage.removeItem(STORAGE_KEY);responses.forEach(x=>{x.value="";x.classList.remove("correct","incorrect");const f=x.parentElement.querySelector(".feedback");if(f){f.className="feedback";f.textContent=""}});groups.forEach(g=>{delete g.dataset.selected;g.querySelectorAll("button").forEach(b=>b.classList.remove("selected","correct-choice","wrong-choice"));const f=g.parentElement.querySelector(".feedback")||g.nextElementSibling;if(f){f.className="feedback";f.textContent=""}});progress()};
+const restore=()=>{const state=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");responses.forEach(x=>{if(state[x.id]!==undefined){x.value=state[x.id];if(x.value.trim())validate(x)}});groups.forEach((g,i)=>{const k=g.dataset.item||`g${i}`;if(state[k])pick(g,state[k])});const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}");zoom=s.zoom||1;hintsVisible=s.hintsVisible!==false;applyZoom();applyHints();progress()};
+restore();
+})();
+</script>
+</body>
+</html>
