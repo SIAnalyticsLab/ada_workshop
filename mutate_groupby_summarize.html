@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SI Analytics | Interactive mutate, group_by and summarize Cheat Sheet</title>
+<style>
+:root{
+  --navy:#0F172A;--teal:#0F766E;--gold:#FACC15;--off:#F8FAFC;--soft-teal:#ECFDF5;
+  --soft-gold:#FEF9C3;--slate:#64748B;--rose:#BE123C;--green:#15803D;--line:#CBD5E1;
+  --ink:#1E293B;--zoom:1
+}
+*{box-sizing:border-box}
+html{background:#E2E8F0;scroll-behavior:smooth}
+body{margin:0;background:#E2E8F0;color:var(--ink);font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.34}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.toolbar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 18px;background:var(--navy);color:#fff;box-shadow:0 8px 20px rgba(15,23,42,.22)}
+.toolbar .instruction{flex:1 1 420px;font-size:13px;color:#E2E8F0}
+.toolbar .actions{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.toolbar button{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fff;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:800}
+.toolbar button:hover,.toolbar button:focus-visible{background:rgba(255,255,255,.18)}
+.toolbar .primary{background:var(--teal);border-color:#5EEAD4}
+.zoom-readout,.progress-readout{font-size:12px;color:#F8FAFC;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.06);white-space:nowrap}
+.progress-shell{width:110px;height:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden}
+.progress-bar{height:100%;width:0;background:var(--gold);transition:width .2s ease}
+.sheet-stage{overflow:auto;padding:22px 0 48px}
+.sheet-wrap{transform:scale(var(--zoom));transform-origin:top center;width:calc(100% / var(--zoom))}
+.page{position:relative;width:min(210mm,calc(100vw - 24px));min-height:297mm;margin:0 auto 20px;padding:12mm 12mm 16mm;background:#fff;box-shadow:0 12px 28px rgba(15,23,42,.16);overflow:hidden}
+.page::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:linear-gradient(90deg,var(--navy) 0 58%,var(--teal) 58% 88%,var(--gold) 88%)}
+.page-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:8px}
+.brand{display:flex;align-items:center;gap:9px;min-width:142px}
+.brand img{width:112px;max-height:42px;object-fit:contain}
+.brand-fallback{display:none;font-size:13px;letter-spacing:.14em;color:var(--navy);font-weight:900}
+.page-kicker{font-size:9px;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:var(--teal);margin-bottom:3px}
+h1{margin:0 0 4px;color:var(--navy);font-size:20px;line-height:1.1;letter-spacing:-.03em}
+.subtitle{margin:0;color:var(--slate);font-size:11px}
+.page-number{font-size:9px;color:var(--slate);white-space:nowrap;margin-top:3px}
+.intro-strip{display:grid;grid-template-columns:1.45fr 1fr;gap:8px;padding:8px 9px;border:1px solid #99F6E4;background:linear-gradient(90deg,var(--soft-teal),#fff);border-radius:10px;margin:7px 0 9px;font-size:9.2px}
+.intro-strip strong{color:var(--navy)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.stack{display:grid;gap:7px}
+.card{break-inside:avoid;border:1px solid #D8E0E8;border-radius:10px;padding:8px;background:#fff}
+.card.soft{background:#F8FAFC}.card.teal{background:var(--soft-teal);border-color:#A7F3D0}.card.gold{background:#FFFBEB;border-color:#FDE68A}
+.card-title{display:flex;gap:7px;align-items:center;margin:0 0 5px;color:var(--navy);font-size:10.2px;text-transform:uppercase;letter-spacing:.07em;font-weight:900}
+.badge{display:inline-grid;place-items:center;width:18px;height:18px;flex:0 0 18px;border-radius:50%;background:var(--teal);color:#fff;font-size:9px;letter-spacing:0}
+p{font-size:9.4px;margin:4px 0}.mini{font-size:8.5px;color:var(--slate);margin:3px 0}
+pre{white-space:pre-wrap;margin:5px 0;padding:6px 7px;border-radius:7px;background:#0B1220;color:#E2E8F0;font:8.15px/1.4 "SFMono-Regular",Consolas,monospace;border-left:3px solid var(--teal)}
+code{font-family:"SFMono-Regular",Consolas,monospace;color:#0F766E;font-size:.96em}
+.question{margin-top:5px;padding-top:5px;border-top:1px dashed #CBD5E1}
+.question:first-of-type{border-top:0;padding-top:0}
+.prompt{display:block;margin-bottom:4px;color:#334155;font-size:9.2px;font-weight:700}
+input.response,textarea.response,select.response{width:100%;border:1px solid #AAB8C7;border-radius:6px;padding:5px 6px;background:#fff;color:var(--navy);font-size:9px;outline:none}
+textarea.response{resize:vertical;min-height:39px;font-family:"SFMono-Regular",Consolas,monospace;line-height:1.3}
+input.response:focus,textarea.response:focus,select.response:focus,button:focus-visible{outline:3px solid rgba(250,204,21,.55);outline-offset:1px}
+.response.correct{border-color:var(--green);background:#F0FDF4}.response.incorrect{border-color:var(--rose);background:#FFF1F2}
+.hint{display:block;margin-top:3px;color:var(--slate);font-size:8.2px}.hint.hidden{display:none}
+.feedback{display:none;margin-top:4px;font-size:8.4px;line-height:1.25}.feedback.show{display:block}.feedback.good{color:var(--green)}.feedback.bad{color:var(--rose)}
+.choice-group{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+.choice-group button{border:1px solid #CBD5E1;color:#334155;background:#fff;border-radius:999px;padding:4px 7px;font-size:8.6px;font-weight:800}
+.choice-group button:hover{border-color:var(--teal)}.choice-group button.selected{border-color:var(--navy);background:#E2E8F0}.choice-group button.correct-choice{border-color:var(--green);background:#DCFCE7;color:#166534}.choice-group button.wrong-choice{border-color:var(--rose);background:#FFE4E6;color:#9F1239}
+table{width:100%;border-collapse:collapse;font-size:8.45px}th,td{border:1px solid #D8E0E8;padding:4px 5px;text-align:left;vertical-align:top}th{background:#F1F5F9;color:var(--navy)}
+.callout{margin-top:5px;padding:5px 7px;border-left:3px solid var(--gold);background:var(--soft-gold);font-size:8.4px}
+.footer{position:absolute;left:12mm;right:12mm;bottom:5mm;padding-top:4px;border-top:1px solid #CBD5E1;color:var(--slate);font-size:8px;text-align:center;letter-spacing:.03em}
+@media(max-width:760px){.page{width:calc(100vw - 12px);padding:10mm 8mm 15mm}.grid-2,.grid-3,.intro-strip{grid-template-columns:1fr}.footer{left:8mm;right:8mm}h1{font-size:18px}}
+@page{size:A4 portrait;margin:0}
+@media print{
+  html,body{background:#fff}.toolbar{display:none!important}.sheet-stage{padding:0;overflow:visible}.sheet-wrap{transform:none!important;width:100%!important}
+  .page{width:210mm;height:297mm;min-height:297mm;margin:0;padding:9mm 10mm 14mm;box-shadow:none;page-break-after:always;break-after:page}
+  .page:last-child{page-break-after:auto;break-after:auto}.footer{left:10mm;right:10mm;bottom:4mm}
+  .page-header{margin-bottom:5px}.intro-strip{margin:5px 0 6px;padding:5px 7px}.grid-2,.stack{gap:5px}
+  .card{padding:5px 6px;border-radius:7px}.card-title{font-size:8.7px;margin-bottom:3px}.badge{width:15px;height:15px;flex-basis:15px;font-size:7px}
+  h1{font-size:17px}p,.prompt{font-size:7.8px}.mini,.hint,.feedback,.choice-group button,.callout,table{font-size:7px}
+  pre{font-size:6.8px;padding:4px 5px;margin:3px 0}input.response,textarea.response,select.response{font-size:7.4px;padding:3px 4px}textarea.response{min-height:28px}.question{margin-top:3px;padding-top:3px}
+}
+</style>
+</head>
+<body>
+<aside class="toolbar" aria-label="Cheat sheet controls">
+  <div class="instruction">Complete the activities, check your understanding, and save your completed sheet as a PDF.</div>
+  <div class="actions">
+    <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+    <span class="zoom-readout" id="zoomReadout">100%</span>
+    <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+    <button type="button" id="toggleHints">Hide hints</button>
+    <button type="button" id="clearAnswers">Clear answers</button>
+    <button type="button" class="primary" id="printSheet">Print or Save PDF</button>
+    <span class="progress-readout" id="progressReadout">0 of 36 completed</span>
+    <span class="progress-shell"><span class="progress-bar" id="progressBar"></span></span>
+  </div>
+</aside>
+<main class="sheet-stage"><div class="sheet-wrap">
+
+<!-- PAGE 1 -->
+<section class="page" aria-labelledby="p1">
+<header class="page-header">
+  <div><div class="page-kicker">SI Analytics • Guided revision sheet</div><h1 id="p1">dplyr Cheat Sheet: Mutating Columns</h1><p class="subtitle">Creating, modifying, and recoding variables with confidence</p></div>
+  <div><div class="brand"><img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">SI ANALYTICS</span></div><div class="page-number">PAGE 01 / 03</div></div>
+</header>
+<div class="intro-strip"><div><strong>Purpose.</strong> Use <code>dplyr::mutate()</code> to create new variables, modify existing variables, and prepare analysis-ready columns.</div><div><strong>Core pattern.</strong> <code>df %&gt;% mutate(new_column = expression)</code></div></div>
+
+<div class="grid-2">
+<div class="stack">
+<article class="card teal">
+<h2 class="card-title"><span class="badge">A</span> Create and modify numeric variables</h2>
+<pre>yao_height %&gt;% 
+  mutate(height_meters = height_cm / 100)
+
+yao_height %&gt;% 
+  mutate(height_cm = height_cm + 5)</pre>
+<div class="question"><label class="prompt" for="q1">1. Which dplyr verb creates or modifies columns?</label><input class="response" id="q1" data-item="q1" data-answer="mutate()" data-alt="mutate||dplyr::mutate()" data-hint-options="mutate()|select()|filter()|summarize()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">2. “Using the same name inside <code>mutate()</code> modifies an existing variable.”</span><div class="choice-group" data-item="q2" data-answer="correct" data-explain="A new name creates a new variable. Reusing an existing name overwrites or modifies that variable."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q3">3. Create <code>height_meters</code> from <code>height_cm</code>.</label><input class="response" id="q3" data-item="q3" data-mode="code" data-answer="yao_height %&gt;% mutate(height_meters = height_cm / 100)" data-alt="mutate(yao_height, height_meters = height_cm / 100)" data-hint-options="Divide height_cm by 100|Multiply height_cm by 100|Use filter()|Use count()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q4">4. Add 5 cm to the existing <code>height_cm</code> variable.</label><input class="response" id="q4" data-item="q4" data-mode="code" data-answer="yao_height %&gt;% mutate(height_cm = height_cm + 5)" data-alt="mutate(yao_height, height_cm = height_cm + 5)" data-hint-options="Reuse the same column name|Create height_plus_5 only|Use group_by()|Use =="><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q5">5. Create <code>weight_grams</code> from <code>weight_kg</code> in <code>sarcopenia</code>.</label><input class="response" id="q5" data-item="q5" data-mode="code" data-answer="sarcopenia %&gt;% mutate(weight_grams = weight_kg * 1000)" data-alt="mutate(sarcopenia, weight_grams = weight_kg * 1000)" data-hint-options="Multiply weight_kg by 1000|Divide by 1000|Use summarize()|Use group_by()"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card gold">
+<h2 class="card-title"><span class="badge">B</span> Create Boolean variables</h2>
+<pre>yao %&gt;% 
+  mutate(is_child = age &lt;= 18)
+
+yao %&gt;% 
+  mutate(has_no_symptoms = symptoms == "No symptoms")
+
+yao %&gt;% 
+  mutate(has_any_symptoms = symptoms != "No symptoms")</pre>
+<div class="question"><span class="prompt">6. “A Boolean variable contains <code>TRUE</code> and <code>FALSE</code> values.”</span><div class="choice-group" data-item="q6" data-answer="correct" data-explain="Boolean, or logical, variables store TRUE and FALSE values."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q7">7. Create <code>is_child</code> for respondents aged 18 or younger.</label><input class="response" id="q7" data-item="q7" data-mode="code" data-answer="yao %&gt;% mutate(is_child = age &lt;= 18)" data-alt="mutate(yao, is_child = age &lt;= 18)" data-hint-options="Use age &lt;= 18|Use age &gt; 18|Use count()|Use n()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q8">8. Create <code>has_any_symptoms</code>.</label><input class="response" id="q8" data-item="q8" data-mode="code" data-answer='yao %&gt;% mutate(has_any_symptoms = symptoms != "No symptoms")' data-alt="mutate(yao, has_any_symptoms = symptoms != 'No symptoms')" data-hint-options="Use symptoms != 'No symptoms'|Use symptoms == 'No symptoms'|Use group_by()|Use everything()"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+</div>
+
+<div class="stack">
+<article class="card">
+<h2 class="card-title"><span class="badge">C</span> Numeric formulas</h2>
+<pre>yao %&gt;%
+  mutate(height_meters = height_cm / 100) %&gt;%
+  mutate(bmi = weight_kg / (height_meters)^2)</pre>
+<div class="question"><label class="prompt" for="q9">9. Complete the BMI formula inside <code>mutate()</code>.</label><input class="response" id="q9" data-item="q9" data-mode="code" data-answer="bmi = weight_kg / (height_meters)^2" data-alt="bmi &lt;- weight_kg / (height_meters)^2||bmi = weight_kg / height_meters^2" data-hint-options="weight_kg / height_meters^2|weight_kg * height_meters|height_meters / weight_kg|Use count()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">10. “<code>mutate()</code> can create variables from formulas using existing columns.”</span><div class="choice-group" data-item="q10" data-answer="correct" data-explain="This is one of the most common uses of mutate()."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+</article>
+
+<article class="card teal">
+<h2 class="card-title"><span class="badge">D</span> Convert variable types</h2>
+<pre>yao_bmi %&gt;% 
+  mutate(bmi_integer = as.integer(bmi),
+         bmi_rounded = round(bmi))</pre>
+<div class="question"><label class="prompt" for="q11">11. Convert <code>age</code> to an integer column called <code>age_integer</code>.</label><input class="response" id="q11" data-item="q11" data-mode="code" data-answer="sarcopenia %&gt;% mutate(age_integer = as.integer(age))" data-alt="mutate(sarcopenia, age_integer = as.integer(age))" data-hint-options="Use as.integer(age)|Use as.character(age)|Use mean(age)|Use n()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">12. “<code>as.integer()</code> truncates decimal values rather than rounding them.”</span><div class="choice-group" data-item="q12" data-answer="correct" data-explain="For example, 22.8 becomes 22 with as.integer()."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q13">13. Which function converts values to factors?</label><input class="response" id="q13" data-item="q13" data-answer="as.factor()" data-alt="as.factor||factor()" data-hint-options="as.factor()|as.integer()|as.character()|as.Date()"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card soft">
+<h2 class="card-title"><span class="badge">E</span> Rapid reference</h2>
+<table>
+<tr><th>Goal</th><th>Pattern</th></tr>
+<tr><td>Create a numeric variable</td><td><code>mutate(height_meters = height_cm / 100)</code></td></tr>
+<tr><td>Create a logical variable</td><td><code>mutate(is_child = age &lt;= 18)</code></td></tr>
+<tr><td>Modify a column</td><td><code>mutate(height_cm = height_cm + 5)</code></td></tr>
+<tr><td>Convert type</td><td><code>mutate(age_integer = as.integer(age))</code></td></tr>
+</table>
+</article>
+</div>
+</div>
+<footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+</section>
+
+<!-- PAGE 2 -->
+<section class="page" aria-labelledby="p2">
+<header class="page-header">
+  <div><div class="page-kicker">SI Analytics • Guided revision sheet</div><h1 id="p2">dplyr Cheat Sheet: Summarising Data</h1><p class="subtitle">Extracting concise statistics and grouped insights</p></div>
+  <div><div class="brand"><img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">SI ANALYTICS</span></div><div class="page-number">PAGE 02 / 03</div></div>
+</header>
+<div class="intro-strip"><div><strong>Purpose.</strong> Use <code>summarize()</code> to reduce a dataset to meaningful statistics. Add <code>group_by()</code> when you need one statistic per group.</div><div><strong>Core pattern.</strong> <code>df %&gt;% summarize(new_name = summary_function(column))</code></div></div>
+
+<div class="grid-2">
+<div class="stack">
+<article class="card teal">
+<h2 class="card-title"><span class="badge">A</span> Summary statistics</h2>
+<pre>yao %&gt;% 
+  summarize(mean_age = mean(age))
+
+yao %&gt;% 
+  summarize(mean_age = mean(age),
+            median_age = median(age))</pre>
+<div class="question"><label class="prompt" for="q14">14. Which dplyr verb extracts summary statistics?</label><input class="response" id="q14" data-item="q14" data-answer="summarize()" data-alt="summarise()||summarize||summarise" data-hint-options="summarize()|mutate()|select()|filter()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">15. “A summary statistic is a single value that describes a sequence of values.”</span><div class="choice-group" data-item="q15" data-answer="correct" data-explain="Examples include the mean, median, minimum, maximum, and standard deviation."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q16">16. Obtain the mean, median, and standard deviation of <code>weight_kg</code>.</label><textarea class="response" id="q16" data-item="q16" data-mode="code" data-answer="yao %&gt;% summarize(mean_weight_kg = mean(weight_kg), median_weight_kg = median(weight_kg), sd_weight_kg = sd(weight_kg))" data-alt="yao %&gt;% summarise(mean_weight_kg = mean(weight_kg), median_weight_kg = median(weight_kg), sd_weight_kg = sd(weight_kg))"></textarea><span class="hint">Hint options: use <code>mean()</code>, <code>median()</code>, and <code>sd()</code>.</span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q17">17. Obtain the minimum and maximum of <code>height_cm</code>.</label><textarea class="response" id="q17" data-item="q17" data-mode="code" data-answer="yao %&gt;% summarize(min_height_cm = min(height_cm), max_height_cm = max(height_cm))" data-alt="yao %&gt;% summarise(min_height_cm = min(height_cm), max_height_cm = max(height_cm))"></textarea><span class="hint">Hint options: use <code>min()</code> and <code>max()</code>.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card gold">
+<h2 class="card-title"><span class="badge">B</span> Grouped summaries</h2>
+<pre>yao %&gt;% 
+  group_by(sex) %&gt;% 
+  summarize(mean_age = mean(age))</pre>
+<div class="question"><label class="prompt" for="q18">18. Which verb creates groups before an operation?</label><input class="response" id="q18" data-item="q18" data-answer="group_by()" data-alt="group_by||dplyr::group_by()" data-hint-options="group_by()|count()|ungroup()|mutate()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">19. “Grouping by <code>sex</code> and then summarising returns one statistic for each sex group.”</span><div class="choice-group" data-item="q19" data-answer="correct" data-explain="group_by() splits the data conceptually so summarize() is computed separately within each group."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q20">20. Calculate mean weight by smoking status.</label><textarea class="response" id="q20" data-item="q20" data-mode="code" data-answer="yao %&gt;% group_by(is_smoker) %&gt;% summarize(weight_mean = mean(weight_kg))" data-alt="yao %&gt;% group_by(is_smoker) %&gt;% summarise(weight_mean = mean(weight_kg))"></textarea><span class="hint">Hint options: group first, then summarise.</span><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q21">21. Calculate minimum and maximum height for each sex.</label><textarea class="response" id="q21" data-item="q21" data-mode="code" data-answer="yao %&gt;% group_by(sex) %&gt;% summarize(min_height_cm = min(height_cm), max_height_cm = max(height_cm))" data-alt="yao %&gt;% group_by(sex) %&gt;% summarise(min_height_cm = min(height_cm), max_height_cm = max(height_cm))"></textarea><span class="hint">Hint options: group by sex, then use min() and max().</span><span class="feedback"></span></div>
+</article>
+</div>
+
+<div class="stack">
+<article class="card">
+<h2 class="card-title"><span class="badge">C</span> Missing values in summaries</h2>
+<pre>yao %&gt;% 
+  group_by(sex) %&gt;% 
+  summarize(total_days_missed = 
+              sum(n_days_miss_work, na.rm = TRUE))</pre>
+<div class="question"><span class="prompt">22. “Without <code>na.rm = TRUE</code>, some summary functions can return <code>NA</code> when missing values are present.”</span><div class="choice-group" data-item="q22" data-answer="correct" data-explain="For sum(), mean(), and similar functions, use na.rm = TRUE when missing values should be removed."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q23">23. Calculate total bedridden days by sex while removing missing values.</label><textarea class="response" id="q23" data-item="q23" data-mode="code" data-answer="yao %&gt;% group_by(sex) %&gt;% summarize(total_bedridden_days = sum(n_bedridden_days, na.rm = TRUE))" data-alt="yao %&gt;% group_by(sex) %&gt;% summarise(total_bedridden_days = sum(n_bedridden_days, na.rm = TRUE))"></textarea><span class="hint">Hint options: include <code>na.rm = TRUE</code>.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card teal">
+<h2 class="card-title"><span class="badge">D</span> Group by more than one variable</h2>
+<pre>yao %&gt;% 
+  group_by(sex, neighborhood) %&gt;% 
+  summarize(mean_age = mean(age))</pre>
+<div class="question"><span class="prompt">24. “You can group by multiple variables by listing them inside <code>group_by()</code>.”</span><div class="choice-group" data-item="q24" data-answer="correct" data-explain="This is often called nested grouping."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q25">25. Calculate mean weight by sex and treatment combination.</label><textarea class="response" id="q25" data-item="q25" data-mode="code" data-answer="yao %&gt;% group_by(sex, treatment_combinations) %&gt;% summarize(mean_weight_kg = mean(weight_kg))" data-alt="yao %&gt;% group_by(sex, treatment_combinations) %&gt;% summarise(mean_weight_kg = mean(weight_kg))"></textarea><span class="hint">Hint options: place both grouping variables inside group_by().</span><span class="feedback"></span></div>
+</article>
+
+<article class="card soft">
+<h2 class="card-title"><span class="badge">E</span> Summary-statistic reference</h2>
+<table>
+<tr><th>Function</th><th>Use</th></tr>
+<tr><td><code>mean()</code></td><td>Average</td></tr>
+<tr><td><code>median()</code></td><td>Middle value</td></tr>
+<tr><td><code>sd()</code></td><td>Standard deviation</td></tr>
+<tr><td><code>min()</code>, <code>max()</code></td><td>Range limits</td></tr>
+<tr><td><code>sum(..., na.rm = TRUE)</code></td><td>Total while removing missing values</td></tr>
+</table>
+</article>
+</div>
+</div>
+<footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+</section>
+
+<!-- PAGE 3 -->
+<section class="page" aria-labelledby="p3">
+<header class="page-header">
+  <div><div class="page-kicker">SI Analytics • Guided revision sheet</div><h1 id="p3">dplyr Cheat Sheet: Counting and Ungrouping</h1><p class="subtitle">Producing reliable grouped outputs for analysis and reporting</p></div>
+  <div><div class="brand"><img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="brand-fallback">SI ANALYTICS</span></div><div class="page-number">PAGE 03 / 03</div></div>
+</header>
+<div class="intro-strip"><div><strong>Purpose.</strong> Count rows efficiently, count rows meeting conditions, and understand when persistent grouping should be removed.</div><div><strong>Key tools.</strong> <code>n()</code>, <code>sum(condition)</code>, <code>count()</code>, <code>ungroup()</code>, and <code>.drop = FALSE</code>.</div></div>
+
+<div class="grid-2">
+<div class="stack">
+<article class="card teal">
+<h2 class="card-title"><span class="badge">A</span> Count rows with <code>n()</code></h2>
+<pre>yao %&gt;% 
+  group_by(neighborhood) %&gt;% 
+  summarize(count = n())</pre>
+<div class="question"><label class="prompt" for="q26">26. Which dplyr helper counts rows inside <code>summarize()</code>?</label><input class="response" id="q26" data-item="q26" data-answer="n()" data-alt="n" data-hint-options="n()|count()|sum()|mean()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">27. “<code>n()</code> does not require an argument.”</span><div class="choice-group" data-item="q27" data-answer="correct" data-explain="Inside summarise(), n() counts the number of rows in the current group."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q28">28. Count respondents by occupation and calculate mean work days missed.</label><textarea class="response" id="q28" data-item="q28" data-mode="code" data-answer="yao %&gt;% group_by(occupation) %&gt;% summarize(count = n(), mean_n_days_miss_work = mean(n_days_miss_work, na.rm = TRUE))" data-alt="yao %&gt;% group_by(occupation) %&gt;% summarise(count = n(), mean_n_days_miss_work = mean(n_days_miss_work, na.rm = TRUE))"></textarea><span class="hint">Hint options: combine <code>n()</code> and <code>mean(..., na.rm = TRUE)</code>.</span><span class="feedback"></span></div>
+</article>
+
+<article class="card gold">
+<h2 class="card-title"><span class="badge">B</span> Count rows meeting a condition</h2>
+<pre>yao %&gt;% 
+  group_by(neighborhood) %&gt;% 
+  summarize(count_under_18 = sum(age &lt; 18))
+
+yao %&gt;% 
+  group_by(neighborhood) %&gt;% 
+  summarize(known_treatments = 
+              sum(!is.na(treatment_combinations)))</pre>
+<div class="question"><span class="prompt">29. Why can <code>sum(age &lt; 18)</code> count children?</span><div class="choice-group" data-item="q29" data-answer="logical" data-explain="The condition returns TRUE and FALSE. In arithmetic, TRUE behaves like 1 and FALSE behaves like 0."><button type="button" data-choice="logical">TRUE is treated as 1 and FALSE as 0</button><button type="button" data-choice="loop">R creates an invisible loop</button><button type="button" data-choice="filter">sum() automatically filters rows</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q30">30. Count doctorate holders by neighbourhood.</label><textarea class="response" id="q30" data-item="q30" data-mode="code" data-answer='yao %&gt;% group_by(neighborhood) %&gt;% summarize(count_with_doctorates = sum(highest_education == "Doctorate"))' data-alt="yao %&gt;% group_by(neighborhood) %&gt;% summarise(count_with_doctorates = sum(highest_education == 'Doctorate'))"></textarea><span class="hint">Hint options: place the equality condition inside sum().</span><span class="feedback"></span></div>
+</article>
+</div>
+
+<div class="stack">
+<article class="card">
+<h2 class="card-title"><span class="badge">C</span> Use <code>count()</code> for concise counts</h2>
+<pre>yao %&gt;% count(occupation)
+yao %&gt;% count(sex, occupation)</pre>
+<div class="question"><span class="prompt">31. “<code>count(occupation)</code> is a concise alternative to <code>group_by(occupation) %&gt;% summarize(n = n())</code>.”</span><div class="choice-group" data-item="q31" data-answer="correct" data-explain="count() wraps common row-counting steps into a compact function."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q32">32. Count combinations of sex, age category, and IgG result.</label><input class="response" id="q32" data-item="q32" data-mode="code" data-answer="yao %&gt;% count(sex, age_category_3, igg_result)" data-alt="count(yao, sex, age_category_3, igg_result)" data-hint-options="Use count(sex, age_category_3, igg_result)|Use summarize() only|Use filter()|Use select()"><span class="hint"></span><span class="feedback"></span></div>
+</article>
+
+<article class="card teal">
+<h2 class="card-title"><span class="badge">D</span> Remove persistent grouping</h2>
+<pre>yao %&gt;% 
+  group_by(sex, neighborhood) %&gt;% 
+  summarize(mean_age = mean(age)) %&gt;% 
+  ungroup()</pre>
+<div class="question"><label class="prompt" for="q33">33. Which function removes grouping from a data frame?</label><input class="response" id="q33" data-item="q33" data-answer="ungroup()" data-alt="ungroup||dplyr::ungroup()" data-hint-options="ungroup()|group_by()|summarize()|count()"><span class="hint"></span><span class="feedback"></span></div>
+<div class="question"><span class="prompt">34. “After grouped analysis, <code>ungroup()</code> can prevent unexpected downstream behaviour.”</span><div class="choice-group" data-item="q34" data-answer="correct" data-explain="Grouped data frames can affect later dplyr verbs. Ungroup when the grouping is no longer needed."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+</article>
+
+<article class="card gold">
+<h2 class="card-title"><span class="badge">E</span> Include missing combinations</h2>
+<pre>yao_no_male_children %&gt;% 
+  mutate(sex = as.factor(sex),
+         age_category_3 = as.factor(age_category_3)) %&gt;% 
+  group_by(sex, age_category_3, .drop = FALSE) %&gt;% 
+  summarize(number_of_individuals = n())</pre>
+<div class="question"><span class="prompt">35. “<code>.drop = FALSE</code> can retain factor-level combinations that are absent from the observed rows.”</span><div class="choice-group" data-item="q35" data-answer="correct" data-explain="Convert grouping variables to factors first, then use .drop = FALSE to keep absent combinations in the output."><button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button></div><span class="feedback"></span></div>
+<div class="question"><label class="prompt" for="q36">36. Complete the grouped median-age pattern with missing combinations retained.</label><textarea class="response" id="q36" data-item="q36" data-mode="code" data-answer="yao %&gt;% mutate(neighborhood = as.factor(neighborhood), age_category_3 = as.factor(age_category_3), sex = as.factor(sex)) %&gt;% group_by(neighborhood, age_category_3, sex, .drop = FALSE) %&gt;% summarize(median_age = median(age, na.rm = TRUE))" data-alt="yao %&gt;% mutate(neighborhood = as.factor(neighborhood), age_category_3 = as.factor(age_category_3), sex = as.factor(sex)) %&gt;% group_by(neighborhood, age_category_3, sex, .drop = FALSE) %&gt;% summarise(median_age = median(age, na.rm = TRUE))"></textarea><span class="hint">Hint options: convert the grouping variables to factors, then use <code>.drop = FALSE</code>.</span><span class="feedback"></span></div>
+</article>
+</div>
+</div>
+
+<article class="card soft" style="margin-top:8px">
+<h2 class="card-title"><span class="badge">F</span> Final readiness check</h2>
+<table>
+<tr><th>Need</th><th>Use</th></tr>
+<tr><td>Create or modify a column</td><td><code>mutate()</code></td></tr>
+<tr><td>Extract a summary statistic</td><td><code>summarize()</code></td></tr>
+<tr><td>Create grouped summaries</td><td><code>group_by()</code> then <code>summarize()</code></td></tr>
+<tr><td>Count rows per group</td><td><code>n()</code> or <code>count()</code></td></tr>
+<tr><td>Count rows meeting a condition</td><td><code>sum(condition)</code></td></tr>
+<tr><td>Remove grouping</td><td><code>ungroup()</code></td></tr>
+</table>
+<div class="callout"><strong>Workshop readiness:</strong> revisit any rose-coloured response, then print or save your completed sheet as a PDF.</div>
+</article>
+<footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+</section>
+</div></main>
+
+<script>
+(() => {
+const STORAGE_KEY="siAnalyticsMutateGroupSummarizeV1", SETTINGS_KEY="siAnalyticsMutateGroupSummarizeSettingsV1";
+const responses=[...document.querySelectorAll(".response")],groups=[...document.querySelectorAll(".choice-group")],hints=[...document.querySelectorAll(".hint")];
+const items=[...responses.filter(x=>x.dataset.item),...groups.filter(x=>x.dataset.item)];
+let zoom=1,hintsVisible=true;
+const norm=(v,mode="")=>{let x=(v||"").trim().toLowerCase().replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/\r/g,"");return mode==="code"?x.replace(/\s+/g,"").replace(/;/g,""):x.replace(/\s+/g," ")};
+const alts=el=>[el.dataset.answer||"",...(el.dataset.alt?el.dataset.alt.split("||"):[])].map(x=>norm(x,el.dataset.mode));
+const feedback=(el,ok,msg="")=>{const f=el.parentElement.querySelector(".feedback")||el.nextElementSibling?.nextElementSibling;if(el.classList.contains("response")){el.classList.toggle("correct",ok);el.classList.toggle("incorrect",!ok)}if(f){f.className=`feedback show ${ok?"good":"bad"}`;f.textContent=msg||(ok?"Correct.":"Review this item and try again.")}};
+const validate=el=>{if(!el.value.trim()){el.classList.remove("correct","incorrect");const f=el.parentElement.querySelector(".feedback");if(f){f.className="feedback";f.textContent=""}return false}const ok=alts(el).includes(norm(el.value,el.dataset.mode));feedback(el,ok);return ok};
+const progress=()=>{const done=items.filter(x=>x.classList.contains("response")?!!x.value.trim():!!x.dataset.selected).length,pct=Math.round(done/items.length*100);document.getElementById("progressReadout").textContent=`${done} of ${items.length} completed • ${pct}%`;document.getElementById("progressBar").style.width=`${pct}%`};
+const save=()=>{const state={};responses.forEach(x=>state[x.id]=x.value);groups.forEach((g,i)=>state[g.dataset.item||`g${i}`]=g.dataset.selected||"");localStorage.setItem(STORAGE_KEY,JSON.stringify(state));localStorage.setItem(SETTINGS_KEY,JSON.stringify({zoom,hintsVisible}));progress()};
+const pick=(g,c)=>{g.dataset.selected=c;const ok=c===g.dataset.answer;g.querySelectorAll("button").forEach(b=>{b.classList.remove("selected","correct-choice","wrong-choice");if(b.dataset.choice===c)b.classList.add("selected",ok?"correct-choice":"wrong-choice")});const f=g.parentElement.querySelector(".feedback")||g.nextElementSibling;if(f){f.className=`feedback show ${ok?"good":"bad"}`;f.textContent=ok?"Correct.":(g.dataset.explain||"Review this concept and try again.")}save()};
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+responses.forEach(el=>{const h=el.parentElement.querySelector(".hint")||el.nextElementSibling;if(h&&el.dataset.hintOptions)h.textContent=`Hint options: ${shuffle(el.dataset.hintOptions.split("|")).join("  •  ")}`;el.addEventListener("blur",()=>{validate(el);save()});el.addEventListener("input",save);el.addEventListener("change",()=>{validate(el);save()})});
+groups.forEach(g=>g.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>pick(g,b.dataset.choice))));
+const applyZoom=()=>{document.documentElement.style.setProperty("--zoom",zoom);document.getElementById("zoomReadout").textContent=`${Math.round(zoom*100)}%`};
+const applyHints=()=>{hints.forEach(h=>h.classList.toggle("hidden",!hintsVisible));document.getElementById("toggleHints").textContent=hintsVisible?"Hide hints":"Show hints"};
+document.getElementById("zoomOut").onclick=()=>{zoom=Math.max(.7,+(zoom-.1).toFixed(1));applyZoom();save()};
+document.getElementById("zoomIn").onclick=()=>{zoom=Math.min(1.3,+(zoom+.1).toFixed(1));applyZoom();save()};
+document.getElementById("toggleHints").onclick=()=>{hintsVisible=!hintsVisible;applyHints();save()};
+document.getElementById("printSheet").onclick=()=>window.print();
+document.getElementById("clearAnswers").onclick=()=>{if(!confirm("Clear all saved responses from this browser?"))return;localStorage.removeItem(STORAGE_KEY);responses.forEach(x=>{x.value="";x.classList.remove("correct","incorrect");const f=x.parentElement.querySelector(".feedback");if(f){f.className="feedback";f.textContent=""}});groups.forEach(g=>{delete g.dataset.selected;g.querySelectorAll("button").forEach(b=>b.classList.remove("selected","correct-choice","wrong-choice"));const f=g.parentElement.querySelector(".feedback")||g.nextElementSibling;if(f){f.className="feedback";f.textContent=""}});progress()};
+const restore=()=>{const state=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");responses.forEach(x=>{if(state[x.id]!==undefined){x.value=state[x.id];if(x.value.trim())validate(x)}});groups.forEach((g,i)=>{const k=g.dataset.item||`g${i}`;if(state[k])pick(g,state[k])});const s=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}");zoom=s.zoom||1;hintsVisible=s.hintsVisible!==false;applyZoom();applyHints();progress()};
+restore();
+})();
+</script>
+</body>
+</html>
