@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SI Analytics | Interactive R Foundations Cheat Sheet</title>
+  <style>
+    :root{
+      --navy:#0F172A; --teal:#0F766E; --gold:#FACC15; --off:#F8FAFC;
+      --soft-teal:#ECFDF5; --soft-gold:#FEF9C3; --slate:#64748B;
+      --rose:#BE123C; --green:#15803D; --line:#CBD5E1; --ink:#1E293B;
+      --zoom:1;
+    }
+    *{box-sizing:border-box}
+    html{background:#E2E8F0; scroll-behavior:smooth}
+    body{
+      margin:0; color:var(--ink); background:#E2E8F0;
+      font-family:Inter,Arial,Helvetica,sans-serif; line-height:1.34;
+    }
+    button,input,textarea,select{font:inherit}
+    button{cursor:pointer}
+    .toolbar{
+      position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap;
+      align-items:center; gap:8px 12px; padding:12px 18px;
+      color:white; background:var(--navy); box-shadow:0 8px 20px rgba(15,23,42,.22);
+    }
+    .toolbar .instruction{font-size:13px; flex:1 1 420px; color:#E2E8F0}
+    .toolbar .actions{display:flex; flex-wrap:wrap; align-items:center; gap:7px}
+    .toolbar button{
+      border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.08);
+      color:white; border-radius:8px; padding:8px 10px; font-weight:700; font-size:12px;
+    }
+    .toolbar button:hover,.toolbar button:focus-visible{background:rgba(255,255,255,.18)}
+    .toolbar .primary{background:var(--teal); border-color:#5EEAD4}
+    .zoom-readout,.progress-readout{
+      font-size:12px; color:#F8FAFC; border:1px solid rgba(255,255,255,.18);
+      border-radius:8px; padding:8px 10px; background:rgba(255,255,255,.06);
+      white-space:nowrap;
+    }
+    .progress-shell{width:110px; height:7px; background:rgba(255,255,255,.16); border-radius:99px; overflow:hidden}
+    .progress-bar{height:100%; width:0%; background:var(--gold); transition:width .22s ease}
+    .sheet-stage{overflow:auto; padding:22px 0 48px}
+    .sheet-wrap{transform:scale(var(--zoom)); transform-origin:top center; width:calc(100% / var(--zoom))}
+    .page{
+      position:relative; width:min(210mm,calc(100vw - 24px)); min-height:297mm; margin:0 auto 20px;
+      padding:12mm 12mm 16mm; background:white; box-shadow:0 12px 28px rgba(15,23,42,.16);
+      overflow:hidden;
+    }
+    .page::before{content:""; position:absolute; left:0; right:0; top:0; height:5px; background:linear-gradient(90deg,var(--navy) 0 58%,var(--teal) 58% 88%,var(--gold) 88%)}
+    .page-header{display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:9px}
+    .brand{display:flex; align-items:center; gap:10px; min-width:145px}
+    .brand img{width:112px; max-height:42px; object-fit:contain}
+    .brand-fallback{display:none; font-size:13px; letter-spacing:.14em; color:var(--navy); font-weight:900}
+    .page-kicker{font-size:9px; letter-spacing:.16em; text-transform:uppercase; font-weight:900; color:var(--teal); margin-bottom:3px}
+    h1{font-size:20px; line-height:1.1; color:var(--navy); margin:0 0 4px; letter-spacing:-.03em}
+    .subtitle{margin:0; font-size:11px; color:var(--slate)}
+    .page-number{font-size:9px; color:var(--slate); white-space:nowrap; margin-top:3px}
+    .intro-strip{
+      display:grid; grid-template-columns:1.45fr 1fr; gap:8px; padding:8px 9px;
+      border:1px solid #99F6E4; background:linear-gradient(90deg,var(--soft-teal),#fff); border-radius:10px;
+      margin:7px 0 9px; font-size:9.2px;
+    }
+    .intro-strip strong{color:var(--navy)}
+    .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+    .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:7px}
+    .stack{display:grid; gap:7px}
+    .card{
+      break-inside:avoid; border:1px solid #D8E0E8; border-radius:10px;
+      padding:8px; background:#fff;
+    }
+    .card.soft{background:#F8FAFC}
+    .card.teal{background:var(--soft-teal); border-color:#A7F3D0}
+    .card.gold{background:#FFFBEB; border-color:#FDE68A}
+    .card-title{
+      display:flex; gap:7px; align-items:center; color:var(--navy); font-size:10.2px;
+      text-transform:uppercase; letter-spacing:.07em; font-weight:900; margin:0 0 5px;
+    }
+    .badge{
+      display:inline-grid; place-items:center; width:18px; height:18px; flex:0 0 18px;
+      border-radius:50%; color:white; background:var(--teal); font-size:9px; letter-spacing:0;
+    }
+    .mini{font-size:8.8px; color:var(--slate); margin:3px 0}
+    p{font-size:9.4px; margin:4px 0}
+    pre{
+      white-space:pre-wrap; margin:5px 0; padding:6px 7px; border-radius:7px;
+      background:#0B1220; color:#E2E8F0; font:8.3px/1.4 "SFMono-Regular",Consolas,monospace;
+      border-left:3px solid var(--teal);
+    }
+    code{font-family:"SFMono-Regular",Consolas,monospace; color:#0F766E; font-size:.96em}
+    .question{margin-top:5px; padding-top:5px; border-top:1px dashed #CBD5E1}
+    .question:first-of-type{border-top:0; padding-top:0}
+    .prompt{display:block; font-size:9.2px; font-weight:700; color:#334155; margin-bottom:4px}
+    input.response,select.response,textarea.response{
+      width:100%; border:1px solid #AAB8C7; border-radius:6px; padding:5px 6px;
+      background:white; color:var(--navy); font-size:9px; outline:none;
+    }
+    textarea.response{resize:vertical; min-height:39px; font-family:"SFMono-Regular",Consolas,monospace; line-height:1.3}
+    input.response:focus,select.response:focus,textarea.response:focus,
+    button:focus-visible{outline:3px solid rgba(250,204,21,.55); outline-offset:1px}
+    .response.correct{border-color:var(--green); background:#F0FDF4}
+    .response.incorrect{border-color:var(--rose); background:#FFF1F2}
+    .hint{display:block; margin-top:3px; color:var(--slate); font-size:8.2px}
+    .hint.hidden{display:none}
+    .feedback{display:none; margin-top:4px; font-size:8.4px; line-height:1.25}
+    .feedback.show{display:block}
+    .feedback.good{color:var(--green)}
+    .feedback.bad{color:var(--rose)}
+    .choice-group{display:flex; flex-wrap:wrap; gap:5px; margin-top:3px}
+    .choice-group button{
+      border:1px solid #CBD5E1; color:#334155; background:white; border-radius:999px;
+      padding:4px 7px; font-size:8.6px; font-weight:800;
+    }
+    .choice-group button:hover{border-color:var(--teal)}
+    .choice-group button.selected{border-color:var(--navy); background:#E2E8F0}
+    .choice-group button.correct-choice{border-color:var(--green); background:#DCFCE7; color:#166534}
+    .choice-group button.wrong-choice{border-color:var(--rose); background:#FFE4E6; color:#9F1239}
+    table{width:100%; border-collapse:collapse; font-size:8.6px}
+    th,td{border:1px solid #D8E0E8; padding:4px 5px; text-align:left; vertical-align:top}
+    th{background:#F1F5F9; color:var(--navy)}
+    .callout{font-size:8.5px; padding:5px 7px; border-left:3px solid var(--gold); background:var(--soft-gold); margin-top:5px}
+    .footer{
+      position:absolute; left:12mm; right:12mm; bottom:5mm; padding-top:4px;
+      border-top:1px solid #CBD5E1; color:var(--slate); font-size:8px; text-align:center; letter-spacing:.03em;
+    }
+    .status-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:#CBD5E1; margin-right:4px}
+    .status-dot.done{background:var(--green)}
+    .advanced{border-style:dashed}
+    .no-print-note{font-size:8px;color:var(--slate)}
+    @media (max-width:760px){
+      .page{width:calc(100vw - 12px); padding:10mm 8mm 15mm}
+      .grid-2,.grid-3,.intro-strip{grid-template-columns:1fr}
+      h1{font-size:18px}
+      .footer{left:8mm; right:8mm}
+    }
+    @page{size:A4 portrait; margin:0}
+    @media print{
+      html,body{background:white}
+      .toolbar{display:none!important}
+      .sheet-stage{padding:0; overflow:visible}
+      .sheet-wrap{transform:none!important; width:100%!important}
+      .page{
+        width:210mm; height:297mm; min-height:297mm; margin:0; padding:9mm 10mm 14mm;
+        box-shadow:none; page-break-after:always; break-after:page;
+      }
+      .page:last-child{page-break-after:auto; break-after:auto}
+      .footer{left:10mm; right:10mm; bottom:4mm}
+      .card{box-shadow:none; break-inside:avoid}
+      h1{font-size:17px}
+      .page-header{margin-bottom:5px}
+      .intro-strip{margin:5px 0 6px; padding:5px 7px}
+      .grid-2,.stack{gap:5px}
+      .card{padding:5px 6px; border-radius:7px}
+      .card-title{font-size:8.7px; margin-bottom:3px}
+      .badge{width:15px;height:15px;flex-basis:15px;font-size:7px}
+      p,.prompt{font-size:7.9px}
+      .mini{font-size:7.4px}
+      pre{font-size:7px; padding:4px 5px; margin:3px 0}
+      input.response,select.response,textarea.response{font-size:7.4px; padding:3px 4px}
+      textarea.response{min-height:28px}
+      .hint,.feedback,.choice-group button,.callout,table{font-size:7.1px}
+      .question{margin-top:3px;padding-top:3px}
+      .no-print-note{display:none}
+    }
+  </style>
+</head>
+<body>
+  <aside class="toolbar" aria-label="Cheat sheet controls">
+    <div class="instruction">Complete the activities, check your understanding, and save your completed sheet as a PDF.</div>
+    <div class="actions">
+      <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+      <span class="zoom-readout" id="zoomReadout">100%</span>
+      <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+      <button type="button" id="toggleHints">Hide hints</button>
+      <button type="button" id="clearAnswers">Clear answers</button>
+      <button type="button" class="primary" id="printSheet">Print or Save PDF</button>
+      <span class="progress-readout" id="progressReadout">0 of 38 completed</span>
+      <span class="progress-shell" aria-hidden="true"><span class="progress-bar" id="progressBar"></span></span>
+    </div>
+  </aside>
+
+  <main class="sheet-stage">
+    <div class="sheet-wrap" id="sheetWrap">
+
+      <!-- PAGE 1 -->
+      <section class="page" aria-labelledby="page1-title">
+        <header class="page-header">
+          <div>
+            <div class="page-kicker">SI Analytics • Guided revision sheet</div>
+            <h1 id="page1-title">R Foundations Cheat Sheet: Data Structures</h1>
+            <p class="subtitle">Vectors, data frames, tibbles, and the building blocks of analysis</p>
+          </div>
+          <div>
+            <div class="brand">
+              <img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+              <span class="brand-fallback">SI ANALYTICS</span>
+            </div>
+            <div class="page-number">PAGE 01 / 03</div>
+          </div>
+        </header>
+
+        <div class="intro-strip">
+          <div><strong>Purpose.</strong> Recall the structures you will use throughout your analysis workflow, then test your ability to create, inspect, and combine them.</div>
+          <div><strong>Core examples.</strong> Work from the compact R objects below. Complete each response before the live workshop.</div>
+        </div>
+
+        <div class="grid-2">
+          <div class="stack">
+            <article class="card teal">
+              <h2 class="card-title"><span class="badge">A</span> Vector essentials</h2>
+              <pre>age &lt;- c(18, 25, 46)
+sex &lt;- c("M", "F", "F")
+positive_test &lt;- c(TRUE, TRUE, FALSE)
+id &lt;- 1:3</pre>
+
+              <div class="question">
+                <label class="prompt" for="q1">1. A vector is a collection of values that share the same ______.</label>
+                <input class="response" id="q1" data-item="q1" data-answer="class" data-alt="data type||type" data-hint-options="class|row|package|function" aria-label="Vector definition answer">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q2">2. Which function combines values into a vector?</label>
+                <input class="response" id="q2" data-item="q2" data-answer="c()" data-alt="c||c function" data-hint-options="c()|data.frame()|class()|return()" aria-label="Vector combine function">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <span class="prompt">3. “Multiplying <code>age * 2</code> applies the calculation to every element.”</span>
+                <div class="choice-group" data-item="q3" data-answer="correct" data-explain="Vectorised arithmetic applies the operation to each relevant element.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card">
+              <h2 class="card-title"><span class="badge">B</span> Classes and sequences</h2>
+              <div class="grid-3">
+                <div class="question">
+                  <label class="prompt" for="q4">4. Class of <code>age</code></label>
+                  <select class="response" id="q4" data-item="q4" data-answer="numeric" aria-label="Class of age"><option value="">Select</option><option>numeric</option><option>character</option><option>logical</option></select>
+                  <span class="feedback"></span>
+                </div>
+                <div class="question">
+                  <label class="prompt" for="q5">5. Class of <code>sex</code></label>
+                  <select class="response" id="q5" data-item="q5" data-answer="character" aria-label="Class of sex"><option value="">Select</option><option>numeric</option><option>character</option><option>logical</option></select>
+                  <span class="feedback"></span>
+                </div>
+                <div class="question">
+                  <label class="prompt" for="q6">6. Class of <code>positive_test</code></label>
+                  <select class="response" id="q6" data-item="q6" data-answer="logical" aria-label="Class of positive test"><option value="">Select</option><option>numeric</option><option>character</option><option>logical</option></select>
+                  <span class="feedback"></span>
+                </div>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q7">7. Complete the numeric sequence: <code>id &lt;- ______</code></label>
+                <input class="response" id="q7" data-item="q7" data-answer="1:3" data-hint-options="1:3|c(1, 3)|1-3|seq" aria-label="Numeric sequence">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card gold">
+              <h2 class="card-title"><span class="badge">C</span> Repair the vectors</h2>
+              <p>Correct the two lines. Use valid R syntax.</p>
+              <div class="question">
+                <label class="prompt" for="q8">8. Repair: <code>my_vec_1 &lt;- (1, 2, 3)</code></label>
+                <input class="response" id="q8" data-item="q8" data-mode="code" data-answer="my_vec_1 &lt;- c(1, 2, 3)" data-hint-options="Add c()|Use data.frame()|Remove commas|Use return()" aria-label="Repair vector one">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q9">9. Repair: <code>my_vec_2 &lt;- c("Obi", "Chika" "Nonso")</code></label>
+                <input class="response" id="q9" data-item="q9" data-mode="code" data-answer='my_vec_2 &lt;- c("Obi", "Chika", "Nonso")' data-alt="my_vec_2 &lt;- c('Obi', 'Chika', 'Nonso')" data-hint-options="Add the missing comma|Remove quotation marks|Use 1:3|Add return()" aria-label="Repair vector two">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+            </article>
+          </div>
+
+          <div class="stack">
+            <article class="card">
+              <h2 class="card-title"><span class="badge">D</span> Predict the output</h2>
+              <div class="question">
+                <label class="prompt" for="q10">10. What does <code>age * 2</code> return?</label>
+                <input class="response" id="q10" data-item="q10" data-answer="36 50 92" data-alt="c(36, 50, 92)||36, 50, 92||[1] 36 50 92" data-hint-options="36 50 92|18 25 46|19 27 49|4.24 5 6.78" aria-label="Age times two result">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q11">11. What does <code>age + id</code> return?</label>
+                <input class="response" id="q11" data-item="q11" data-answer="19 27 49" data-alt="c(19, 27, 49)||19, 27, 49||[1] 19 27 49" data-hint-options="19 27 49|18 25 46|36 50 92|1 2 3" aria-label="Age plus id result">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card teal">
+              <h2 class="card-title"><span class="badge">E</span> From vectors to a data frame</h2>
+              <pre>data_epi &lt;- data.frame(id, age, sex, positive_test)</pre>
+              <div class="question">
+                <label class="prompt" for="q12">12. Which function creates a data frame?</label>
+                <input class="response" id="q12" data-item="q12" data-answer="data.frame()" data-alt="data.frame||data frame" data-hint-options="data.frame()|as_tibble()|read_csv()|c()" aria-label="Create data frame function">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q13">13. Complete the extraction syntax: <code>data_epi______age</code></label>
+                <input class="response" id="q13" data-item="q13" data-answer="$" data-hint-options="$|%>%|:|==" aria-label="Column extraction operator">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q14">14. Combine the vectors below into <code>df</code> with the columns <code>name</code>, <code>number_of_children</code>, and <code>is_married</code>.</label>
+                <pre>character_vec &lt;- c("Bob", "Jane", "Joe")
+numeric_vec &lt;- c(1, 2, 3)
+logical_vec &lt;- c(TRUE, FALSE, FALSE)</pre>
+                <textarea class="response" id="q14" data-item="q14" data-mode="code" data-answer="df &lt;- data.frame(name = character_vec, number_of_children = numeric_vec, is_married = logical_vec)" data-hint-options="Start with df &lt;- data.frame(...)|Use c() only|Use read_csv()|Use class()" aria-label="Combine vectors into data frame"></textarea>
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card">
+              <h2 class="card-title"><span class="badge">F</span> Create a small table</h2>
+              <div class="question">
+                <label class="prompt" for="q15">15. Complete the <code>rooms</code> data frame.</label>
+                <textarea class="response" id="q15" data-item="q15" data-mode="code" data-answer='rooms &lt;- data.frame(room = c("dining", "kitchen", "bedroom"), num_windows = c(3, 2, 5))' data-alt="rooms &lt;- data.frame(room = c('dining', 'kitchen', 'bedroom'), num_windows = c(3, 2, 5))" data-hint-options="Two columns are needed|Use a single vector only|Use as_tibble() first|Use the $ operator" aria-label="Rooms data frame"></textarea>
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <article class="card soft" style="margin-top:8px">
+          <h2 class="card-title"><span class="badge">G</span> Data frame versus tibble</h2>
+          <div class="grid-2">
+            <table aria-label="Data frame and tibble comparison">
+              <tr><th>Feature</th><th>Data frame</th><th>Tibble</th></tr>
+              <tr><td>Create or convert</td><td><code>data.frame()</code></td><td><code>as_tibble()</code></td></tr>
+              <tr><td>Print behaviour</td><td>May print many rows</td><td>Compact console display</td></tr>
+              <tr><td>Helpful header</td><td>Standard output</td><td>Dimensions and abbreviated types</td></tr>
+            </table>
+            <div>
+              <div class="question">
+                <span class="prompt">16. “<code>read_csv()</code> returns a tibble.”</span>
+                <div class="choice-group" data-item="q16" data-answer="correct" data-explain="The readr function read_csv() returns a tibble.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <span class="prompt">17. “Base R <code>read.csv()</code> returns a tibble.”</span>
+                <div class="choice-group" data-item="q17" data-answer="misconception" data-explain="Base R read.csv() returns a data frame, not a tibble.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+            </div>
+          </div>
+        </article>
+        <footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+      </section>
+
+      <!-- PAGE 2 -->
+      <section class="page" aria-labelledby="page2-title">
+        <header class="page-header">
+          <div>
+            <div class="page-kicker">SI Analytics • Guided revision sheet</div>
+            <h1 id="page2-title">R Foundations Cheat Sheet: Writing Functions</h1>
+            <p class="subtitle">Reusable logic for efficient, readable, and reliable analysis</p>
+          </div>
+          <div>
+            <div class="brand">
+              <img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+              <span class="brand-fallback">SI ANALYTICS</span>
+            </div>
+            <div class="page-number">PAGE 02 / 03</div>
+          </div>
+        </header>
+
+        <div class="intro-strip">
+          <div><strong>Key idea.</strong> Objects store information. Functions perform actions on objects. Well-designed functions make repeated analysis steps easier to reuse and audit.</div>
+          <div><strong>Focus.</strong> Identify arguments, bodies, returned values, default values, vectorised behaviour, and local scope.</div>
+        </div>
+
+        <div class="grid-2">
+          <div class="stack">
+            <article class="card teal">
+              <h2 class="card-title"><span class="badge">A</span> Anatomy of a function</h2>
+              <pre>pounds_to_kg &lt;- function(pounds) {
+  kg &lt;- pounds * 0.4536
+  return(kg)
+}</pre>
+              <div class="question">
+                <span class="prompt">18. “Objects store information, while functions perform actions on objects.”</span>
+                <div class="choice-group" data-item="q18" data-answer="correct" data-explain="This is the core distinction used in the lesson.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q19">19. A new function is created using ______.</label>
+                <input class="response" id="q19" data-item="q19" data-answer="function()" data-alt="function" data-hint-options="function()|return()|data.frame()|if()" aria-label="Function constructor">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="grid-3">
+                <div class="question">
+                  <label class="prompt" for="q20">20. Function name</label>
+                  <input class="response" id="q20" data-item="q20" data-answer="pounds_to_kg" aria-label="Function name">
+                  <span class="feedback"></span>
+                </div>
+                <div class="question">
+                  <label class="prompt" for="q21">21. Argument</label>
+                  <input class="response" id="q21" data-item="q21" data-answer="pounds" aria-label="Function argument">
+                  <span class="feedback"></span>
+                </div>
+                <div class="question">
+                  <label class="prompt" for="q22">22. Returned object</label>
+                  <input class="response" id="q22" data-item="q22" data-answer="kg" aria-label="Returned object">
+                  <span class="feedback"></span>
+                </div>
+              </div>
+              <div class="callout"><strong>Remember:</strong> Code inside the braces is the function body. <code>return()</code> sends the result back to the user. R can also return the last evaluated expression automatically.</div>
+            </article>
+
+            <article class="card">
+              <h2 class="card-title"><span class="badge">B</span> Predict and explain</h2>
+              <div class="question">
+                <label class="prompt" for="q23">23. What does <code>pounds_to_kg(150)</code> return?</label>
+                <input class="response" id="q23" data-item="q23" data-answer="68.04" data-alt="[1] 68.04||68.040" data-hint-options="68.04|150|330.69|0.4536" aria-label="Pounds conversion answer">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q24">24. What does <code>pounds_to_kg(c(150, 200, 250))</code> return?</label>
+                <input class="response" id="q24" data-item="q24" data-answer="68.04 90.72 113.40" data-alt="c(68.04, 90.72, 113.40)||68.04, 90.72, 113.40||68.04 90.72 113.4||[1] 68.04 90.72 113.40" data-hint-options="68.04 90.72 113.40|Only 68.04|150 200 250|A syntax error" aria-label="Vector pounds conversion answer">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <span class="prompt">25. Why are multiple values returned?</span>
+                <div class="choice-group" data-item="q25" data-answer="vectorised" data-explain="Multiplication is vectorised, so the operation is applied to every element in the input vector.">
+                  <button type="button" data-choice="vectorised">The multiplication is vectorised</button>
+                  <button type="button" data-choice="loop">R silently creates a loop object</button>
+                  <button type="button" data-choice="global">The vector is global</button>
+                </div><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card gold">
+              <h2 class="card-title"><span class="badge">C</span> Complete two reusable functions</h2>
+              <div class="question">
+                <label class="prompt" for="q26">26. Complete <code>years_to_months()</code>.</label>
+                <textarea class="response" id="q26" data-item="q26" data-mode="code" data-answer="years_to_months &lt;- function(years) { months &lt;- years * 12 return(months) }" data-alt="years_to_months &lt;- function(years) { return(years * 12) }||years_to_months &lt;- function(years) { years * 12 }" data-hint-options="Multiply years by 12|Divide years by 12|Use data.frame()|Use else if" aria-label="Years to months function"></textarea>
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q27">27. Predict: <code>years_to_months(12)</code></label>
+                <input class="response" id="q27" data-item="q27" data-answer="144" data-alt="[1] 144" data-hint-options="144|12|24|0.144" aria-label="Years to months result">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q28">28. Complete <code>celsius_to_fahrenheit()</code>.</label>
+                <textarea class="response" id="q28" data-item="q28" data-mode="code" data-answer="celsius_to_fahrenheit &lt;- function(celsius) { fahrenheit &lt;- celsius * 1.8 + 32 return(fahrenheit) }" data-alt="celsius_to_fahrenheit &lt;- function(celsius) { return(celsius * 1.8 + 32) }||celsius_to_fahrenheit &lt;- function(celsius) { celsius * 1.8 + 32 }" data-hint-options="Use celsius * 1.8 + 32|Use celsius / 12|Use pounds * 0.4536|Use data.frame()" aria-label="Celsius to fahrenheit function"></textarea>
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+            </article>
+          </div>
+
+          <div class="stack">
+            <article class="card teal">
+              <h2 class="card-title"><span class="badge">D</span> Multiple arguments and defaults</h2>
+              <pre>calculate_calories &lt;- function(
+  carb_grams, protein_grams, fat_grams = 0
+) {
+  result &lt;- (carb_grams * 4) +
+            (protein_grams * 4) +
+            (fat_grams * 9)
+  return(result)
+}</pre>
+              <div class="question">
+                <span class="prompt">29. Which arguments are mandatory?</span>
+                <div class="choice-group" data-item="q29" data-answer="carb-protein" data-explain="carb_grams and protein_grams have no default values, so both are mandatory.">
+                  <button type="button" data-choice="carb-protein">carb_grams and protein_grams</button>
+                  <button type="button" data-choice="fat-only">fat_grams only</button>
+                  <button type="button" data-choice="all">All three</button>
+                </div><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q30">30. What is the default value of <code>fat_grams</code>?</label>
+                <input class="response" id="q30" data-item="q30" data-answer="0" data-alt="zero" data-hint-options="0|9|4|NULL" aria-label="Default fat grams">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="q31">31. Predict: <code>calculate_calories(50, 25)</code></label>
+                <input class="response" id="q31" data-item="q31" data-answer="300" data-alt="[1] 300" data-hint-options="300|390|75|0" aria-label="Calories result">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <span class="prompt">32. “The function still works when <code>fat_grams</code> is omitted because it has a default value.”</span>
+                <div class="choice-group" data-item="q32" data-answer="correct" data-explain="A default argument value makes that input optional when the function is called.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card">
+              <h2 class="card-title"><span class="badge">E</span> Local and global scope</h2>
+              <table aria-label="Local and global scope comparison">
+                <tr><th>Scope</th><th>Meaning</th></tr>
+                <tr><td><strong>Local object</strong></td><td>Created inside a function and normally unavailable outside it.</td></tr>
+                <tr><td><strong>Global object</strong></td><td>Created in the main environment and available for reuse.</td></tr>
+              </table>
+              <div class="question">
+                <span class="prompt">33. “An object created inside a function is automatically available outside the function.”</span>
+                <div class="choice-group" data-item="q33" data-answer="misconception" data-explain="Objects created inside a function generally have local scope. Return the value if you need to use it outside the function.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card soft">
+              <h2 class="card-title"><span class="badge">F</span> Rapid recall</h2>
+              <div class="grid-2">
+                <div><p><span class="status-dot"></span><strong>Arguments</strong><br><span class="mini">Inputs placed inside the parentheses.</span></p></div>
+                <div><p><span class="status-dot"></span><strong>Function body</strong><br><span class="mini">Code placed inside the braces.</span></p></div>
+                <div><p><span class="status-dot"></span><strong>Named arguments</strong><br><span class="mini"><code>pounds_to_kg(pounds = 150)</code></span></p></div>
+                <div><p><span class="status-dot"></span><strong>Positional arguments</strong><br><span class="mini"><code>pounds_to_kg(150)</code></span></p></div>
+              </div>
+              <p class="no-print-note">Your progress is saved automatically in this browser.</p>
+            </article>
+          </div>
+        </div>
+        <footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+      </section>
+
+      <!-- PAGE 3 -->
+      <section class="page" aria-labelledby="page3-title">
+        <header class="page-header">
+          <div>
+            <div class="page-kicker">SI Analytics • Guided revision sheet</div>
+            <h1 id="page3-title">R Foundations Cheat Sheet: Conditionals</h1>
+            <p class="subtitle">Controlling decisions, checking inputs, and handling vectors safely</p>
+          </div>
+          <div>
+            <div class="brand">
+              <img src="https://raw.githubusercontent.com/SIAnalyticsLab/si-analytics-academy/main/assets/logo.png" alt="SI Analytics logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+              <span class="brand-fallback">SI ANALYTICS</span>
+            </div>
+            <div class="page-number">PAGE 03 / 03</div>
+          </div>
+        </header>
+
+        <div class="intro-strip">
+          <div><strong>Key idea.</strong> Conditionals control decisions. Validation prevents silent failures, while vectorised tools apply logic safely across multiple values.</div>
+          <div><strong>Focus.</strong> Use <code>if</code>, <code>else if</code>, <code>else</code>, <code>%in%</code>, <code>stop()</code>, <code>any()</code>, and <code>case_when()</code>.</div>
+        </div>
+
+        <div class="grid-2">
+          <div class="stack">
+            <article class="card teal">
+              <h2 class="card-title"><span class="badge">A</span> Conditional logic and validation</h2>
+              <pre>celsius_convert &lt;- function(celsius, convert_to) {
+  if (!(convert_to %in% c("fahrenheit", "kelvin"))) {
+    stop("convert_to must be fahrenheit or kelvin")
+  }
+
+  if (convert_to == "fahrenheit") {
+    out &lt;- (celsius * 9 / 5) + 32
+  } else if (convert_to == "kelvin") {
+    out &lt;- celsius + 273.15
+  }
+
+  return(out)
+}</pre>
+              <div class="question">
+                <span class="prompt">34. “<code>if</code> runs a block of code when its condition is true.”</span>
+                <div class="choice-group" data-item="q34" data-answer="correct" data-explain="The code inside the if block runs only when the condition evaluates to TRUE.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+              <div class="grid-3">
+                <div class="question">
+                  <label class="prompt" for="q35">35. Equality operator</label>
+                  <input class="response" id="q35" data-item="q35" data-answer="==" data-hint-options="==|=|%in%|&lt;-" aria-label="Equality operator">
+                  <span class="hint"></span><span class="feedback"></span>
+                </div>
+                <div class="question">
+                  <label class="prompt" for="q36">36. Set-membership operator</label>
+                  <input class="response" id="q36" data-item="q36" data-answer="%in%" data-hint-options="%in%|==|&amp;|$" aria-label="Membership operator">
+                  <span class="hint"></span><span class="feedback"></span>
+                </div>
+                <div class="question">
+                  <label class="prompt" for="q37">37. At-least-one check</label>
+                  <input class="response" id="q37" data-item="q37" data-answer="any()" data-alt="any" data-hint-options="any()|all()|class()|return()" aria-label="Any function">
+                  <span class="hint"></span><span class="feedback"></span>
+                </div>
+              </div>
+              <div class="question">
+                <span class="prompt">38. “<code>stop()</code> terminates a function and returns a clear error message.”</span>
+                <div class="choice-group" data-item="q38" data-answer="correct" data-explain="stop() halts execution and displays the supplied error message.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card gold">
+              <h2 class="card-title"><span class="badge">B</span> Optional advanced challenge</h2>
+              <p>Complete the validation statement that rejects any weight below 30 kg.</p>
+              <pre>if (any(weight &lt; 30)) {
+  stop("Weights must all be at least 30 kg.")
+}</pre>
+              <label class="prompt" for="qOptional">Try writing the full statement from memory.</label>
+              <textarea class="response" id="qOptional" data-skip-progress="true" data-mode="code" data-answer='if (any(weight &lt; 30)) { stop("Weights must all be at least 30 kg.") }' data-alt="if(any(weight&lt;30)){stop('Weights must all be at least 30 kg.')}" data-hint-options="Use any(weight &lt; 30)|Use all(weight == 30)|Use read_csv()|Use return(weight)" aria-label="Advanced weight validation"></textarea>
+              <span class="hint"></span><span class="feedback"></span>
+            </article>
+          </div>
+
+          <div class="stack">
+            <article class="card">
+              <h2 class="card-title"><span class="badge">C</span> Repair a conditional function</h2>
+              <p>The function below has missing parentheses and braces.</p>
+              <pre>check_negatives &lt;- function(numbers) {
+  x &lt;- numbers
+
+  if any(x &lt; 0) {
+    print("x contains negative numbers")
+  else {
+    print("x does not contain negative numbers")
+}</pre>
+              <label class="prompt" for="qRepair">Repair the function.</label>
+              <textarea class="response" id="qRepair" data-skip-progress="true" data-mode="code" data-answer='check_negatives &lt;- function(numbers) { x &lt;- numbers if (any(x &lt; 0)) { print("x contains negative numbers") } else { print("x does not contain negative numbers") } }' data-alt="check_negatives &lt;- function(numbers) { if (any(numbers &lt; 0)) { print('x contains negative numbers') } else { print('x does not contain negative numbers') } }" data-hint-options="Add parentheses around the if condition and close both blocks|Replace any() with data.frame()|Remove else|Use read.csv()" aria-label="Repair conditional function"></textarea>
+              <span class="hint"></span><span class="feedback"></span>
+            </article>
+
+            <article class="card teal">
+              <h2 class="card-title"><span class="badge">D</span> Vectorised classification</h2>
+              <pre>classify_temp &lt;- function(temp) {
+  dplyr::case_when(
+    temp &lt; 35 ~ "hypothermia",
+    temp &gt;= 35 &amp; temp &lt;= 37 ~ "normal",
+    temp &gt; 37 ~ "fever",
+    TRUE ~ NA_character_
+  )
+}</pre>
+              <div class="question">
+                <span class="prompt">Why use <code>case_when()</code> here?</span>
+                <div class="choice-group" data-skip-progress="true" data-answer="vector" data-explain="Base if is not vectorised. case_when() handles the full vector and returns one classification per element.">
+                  <button type="button" data-choice="vector">It handles vector inputs</button>
+                  <button type="button" data-choice="print">It prints every data frame</button>
+                  <button type="button" data-choice="scope">It creates global objects</button>
+                </div><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <label class="prompt" for="qPredict">Predict: <code>classify_temp(c(36, 37, 38))</code></label>
+                <input class="response" id="qPredict" data-skip-progress="true" data-answer='"normal" "normal" "fever"' data-alt="normal normal fever||c('normal', 'normal', 'fever')||c(&quot;normal&quot;, &quot;normal&quot;, &quot;fever&quot;)||[1] &quot;normal&quot; &quot;normal&quot; &quot;fever&quot;" data-hint-options="normal normal fever|hypothermia normal fever|normal fever fever|A single value only" aria-label="Classify temperature result">
+                <span class="hint"></span><span class="feedback"></span>
+              </div>
+              <div class="question">
+                <span class="prompt">“Base <code>if</code> is vectorised and safely evaluates every element of a vector.”</span>
+                <div class="choice-group" data-skip-progress="true" data-answer="misconception" data-explain="Base if is not vectorised. Use tools such as ifelse() or dplyr::case_when() for vector inputs.">
+                  <button type="button" data-choice="correct">Correct</button><button type="button" data-choice="misconception">Misconception</button>
+                </div><span class="feedback"></span>
+              </div>
+            </article>
+
+            <article class="card soft">
+              <h2 class="card-title"><span class="badge">E</span> Final readiness check</h2>
+              <table aria-label="Conditional logic summary">
+                <tr><th>Tool</th><th>Use it when you need to…</th></tr>
+                <tr><td><code>if</code></td><td>Run code only when a single condition is true.</td></tr>
+                <tr><td><code>else if</code></td><td>Check another condition when the earlier one is false.</td></tr>
+                <tr><td><code>else</code></td><td>Provide a fallback.</td></tr>
+                <tr><td><code>%in%</code></td><td>Check whether a value appears in an allowed set.</td></tr>
+                <tr><td><code>any()</code></td><td>Check whether at least one vector element meets a condition.</td></tr>
+                <tr><td><code>case_when()</code></td><td>Classify vector values using readable, vectorised rules.</td></tr>
+              </table>
+              <div class="callout"><strong>Workshop readiness:</strong> revise any item that still produces a rose-coloured warning. Then print or save this completed sheet as a PDF for reference.</div>
+            </article>
+          </div>
+        </div>
+        <footer class="footer">SI Analytics | Learn. Apply. Transform. | www.sianalytics.org</footer>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "siAnalyticsRFoundationsV1";
+      const SETTINGS_KEY = "siAnalyticsRFoundationsSettingsV1";
+      const responses = [...document.querySelectorAll(".response")];
+      const choiceGroups = [...document.querySelectorAll(".choice-group")];
+      const progressItems = [
+        ...responses.filter(el => el.dataset.item && el.dataset.skipProgress !== "true"),
+        ...choiceGroups.filter(el => el.dataset.item && el.dataset.skipProgress !== "true")
+      ];
+      const hints = [...document.querySelectorAll(".hint")];
+      let zoom = 1;
+      let hintsVisible = true;
+
+      const normalise = (value, mode = "") => {
+        let x = (value || "").trim().toLowerCase()
+          .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+          .replace(/\r/g, "");
+        if (mode === "code") {
+          return x.replace(/\s+/g, "").replace(/;/g, "");
+        }
+        return x.replace(/\s+/g, " ");
+      };
+
+      const alternatives = (el) => {
+        const primary = el.dataset.answer || "";
+        const alt = el.dataset.alt ? el.dataset.alt.split("||") : [];
+        return [primary, ...alt].map(x => normalise(x, el.dataset.mode));
+      };
+
+      const save = () => {
+        const state = {};
+        responses.forEach(el => { state[el.id] = el.value; });
+        choiceGroups.forEach((group, i) => {
+          state[group.dataset.item || `optionalChoice${i}`] = group.dataset.selected || "";
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({zoom, hintsVisible}));
+        updateProgress();
+      };
+
+      const setFeedback = (el, correct, message = "") => {
+        const feedback = el.parentElement.querySelector(".feedback") || el.nextElementSibling?.nextElementSibling;
+        if (el.classList.contains("response")) {
+          el.classList.toggle("correct", correct);
+          el.classList.toggle("incorrect", !correct);
+        }
+        if (feedback) {
+          feedback.className = `feedback show ${correct ? "good" : "bad"}`;
+          feedback.textContent = message || (correct ? "Correct." : "Review this item and try again.");
+        }
+      };
+
+      const validateResponse = (el, quiet = false) => {
+        if (!el.value.trim()) {
+          el.classList.remove("correct", "incorrect");
+          const fb = el.parentElement.querySelector(".feedback");
+          if (fb) { fb.className = "feedback"; fb.textContent = ""; }
+          return false;
+        }
+        const answer = normalise(el.value, el.dataset.mode);
+        const correct = alternatives(el).includes(answer);
+        if (!quiet || correct) setFeedback(el, correct);
+        return correct;
+      };
+
+      const validateChoice = (group, choice) => {
+        group.dataset.selected = choice;
+        const correct = choice === group.dataset.answer;
+        group.querySelectorAll("button").forEach(btn => {
+          btn.classList.remove("selected", "correct-choice", "wrong-choice");
+          if (btn.dataset.choice === choice) {
+            btn.classList.add("selected", correct ? "correct-choice" : "wrong-choice");
+          }
+        });
+        const fb = group.parentElement.querySelector(".feedback") || group.nextElementSibling;
+        if (fb) {
+          fb.className = `feedback show ${correct ? "good" : "bad"}`;
+          fb.textContent = correct ? "Correct." : (group.dataset.explain || "Review this concept and try again.");
+        }
+        save();
+      };
+
+      const updateProgress = () => {
+        let completed = 0;
+        progressItems.forEach(el => {
+          const answered = el.classList.contains("response") ? !!el.value.trim() : !!el.dataset.selected;
+          if (answered) completed += 1;
+        });
+        const total = progressItems.length;
+        const pct = Math.round((completed / total) * 100);
+        document.getElementById("progressReadout").textContent = `${completed} of ${total} completed • ${pct}%`;
+        document.getElementById("progressBar").style.width = `${pct}%`;
+      };
+
+      const shuffle = (items) => {
+        const arr = [...items];
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      };
+
+      responses.forEach(el => {
+        const hint = el.parentElement.querySelector(".hint") || el.nextElementSibling;
+        if (hint && el.dataset.hintOptions) {
+          const opts = shuffle(el.dataset.hintOptions.split("|"));
+          hint.textContent = `Hint options: ${opts.join("  •  ")}`;
+        }
+        el.addEventListener("input", () => {
+          if (el.value.trim()) validateResponse(el, true);
+          else validateResponse(el, true);
+          save();
+        });
+        el.addEventListener("blur", () => { validateResponse(el); save(); });
+        el.addEventListener("change", () => { validateResponse(el); save(); });
+      });
+
+      choiceGroups.forEach(group => {
+        group.querySelectorAll("button").forEach(btn => {
+          btn.addEventListener("click", () => validateChoice(group, btn.dataset.choice));
+        });
+      });
+
+      const restore = () => {
+        const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        responses.forEach(el => {
+          if (state[el.id] !== undefined) {
+            el.value = state[el.id];
+            if (el.value.trim()) validateResponse(el, true);
+          }
+        });
+        choiceGroups.forEach((group, i) => {
+          const key = group.dataset.item || `optionalChoice${i}`;
+          if (state[key]) validateChoice(group, state[key]);
+        });
+        const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+        zoom = settings.zoom || 1;
+        hintsVisible = settings.hintsVisible !== false;
+        applyZoom();
+        applyHints();
+        updateProgress();
+      };
+
+      const applyZoom = () => {
+        document.documentElement.style.setProperty("--zoom", zoom);
+        document.getElementById("zoomReadout").textContent = `${Math.round(zoom * 100)}%`;
+      };
+      const applyHints = () => {
+        hints.forEach(h => h.classList.toggle("hidden", !hintsVisible));
+        document.getElementById("toggleHints").textContent = hintsVisible ? "Hide hints" : "Show hints";
+      };
+
+      document.getElementById("zoomOut").addEventListener("click", () => {
+        zoom = Math.max(.7, +(zoom - .1).toFixed(1)); applyZoom(); save();
+      });
+      document.getElementById("zoomIn").addEventListener("click", () => {
+        zoom = Math.min(1.3, +(zoom + .1).toFixed(1)); applyZoom(); save();
+      });
+      document.getElementById("toggleHints").addEventListener("click", () => {
+        hintsVisible = !hintsVisible; applyHints(); save();
+      });
+      document.getElementById("clearAnswers").addEventListener("click", () => {
+        if (!confirm("Clear all saved responses from this browser?")) return;
+        localStorage.removeItem(STORAGE_KEY);
+        responses.forEach(el => {
+          el.value = ""; el.classList.remove("correct", "incorrect");
+          const fb = el.parentElement.querySelector(".feedback");
+          if (fb) { fb.className = "feedback"; fb.textContent = ""; }
+        });
+        choiceGroups.forEach(group => {
+          delete group.dataset.selected;
+          group.querySelectorAll("button").forEach(btn => btn.classList.remove("selected", "correct-choice", "wrong-choice"));
+          const fb = group.parentElement.querySelector(".feedback") || group.nextElementSibling;
+          if (fb) { fb.className = "feedback"; fb.textContent = ""; }
+        });
+        updateProgress();
+      });
+      document.getElementById("printSheet").addEventListener("click", () => window.print());
+
+      restore();
+    })();
+  </script>
+</body>
+</html>
